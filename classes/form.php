@@ -34,9 +34,6 @@ class tool_kaltura_migration_form extends moodleform
     {
         $mform = $this->_form;
 
-        $mform->addElement('header', 'searchhdr', get_string('pluginname', 'tool_kaltura_migration'));
-        $mform->setExpanded('searchhdr', true);
-
         $numresults = $this->_customdata['numresults'];
         $hasresults = $numresults > 0;
         $message = $hasresults ? get_string('thereareresults', 'tool_kaltura_migration', $numresults) :

@@ -36,13 +36,9 @@ $migration = new tool_kaltura_migration_controller();
 $form = new tool_kaltura_migration_form(null, ['numresults' => $migration->countResults()]);
 
 if ($data = $form->get_data()) {
-  if ($data->op == get_string('search', 'tool_kaltura_migration')) {
-    $progress = new \core\progress\display();
-    $migration->execute($progress);
-  } else if ($data->op == get_string('deleterecords', 'tool_kaltura_migration')) {
-    $migration->deleteResults();
-  } else if ($data->op == get_string('downloadcsv', 'tool_kaltura_migration')) {
+  if ($data->op == get_string('downloadcsv', 'tool_kaltura_migration')) {
     $migration->downloadCSV();
+    // downloadCSV ends execution.
   }
 }
 
@@ -54,6 +50,16 @@ echo $OUTPUT->box_start();
 echo $OUTPUT->notification(get_string('excludedtables', 'tool_kaltura_migration'), \core\output\notification::NOTIFY_INFO);
 echo $OUTPUT->notification(get_string('searchdeletes', 'tool_kaltura_migration'), \core\output\notification::NOTIFY_INFO);
 echo $OUTPUT->box_end();
+
+if ($data) {
+  if ($data->op == get_string('search', 'tool_kaltura_migration')) {
+    $progress = new \core\progress\display_if_slow();
+    $migration->execute($progress);
+  } else if ($data->op == get_string('deleterecords', 'tool_kaltura_migration')) {
+    $migration->deleteResults();
+  }
+}
+
 
 // Recreate form after operation.
 $form = new tool_kaltura_migration_form(null, ['numresults' => $migration->countResults()]);
