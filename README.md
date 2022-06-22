@@ -10,7 +10,7 @@ git clone https://github.com/estevebadia/kaltura_migration.git
 Login to your Moodle with admin rights and install the new plugin. It will create a new empty database table.
 
 ## Use
- - Go to the url `[YOUR_MOODLE_BASE_URL]/admin/tool/kaltura_migration/`
+ - Go to *Site Administration > Plugins > Admin tools > Kaltura migration*.
  - Press the button "Search" to search the whole database for SWITCH video URLs.
  - All found video URLs are stored in a database table.
  - Download the URLs table by pressing the button "Download CSV".
