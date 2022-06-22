@@ -7,7 +7,7 @@ Copy the source code to the `/admin/tool` folder:
 cd admin/tool
 git clone https://github.com/estevebadia/kaltura_migration.git
 ```
-Login to your Moodle with admin rights and install the new plugin. It will create a new empty database table.
+Login to your Moodle with admin rights, go to *Site Administration* and install the new plugin. It will create a new empty database table.
 
 ## Use
  - Go to *Site Administration > Plugins > Admin tools > Kaltura migration*.
