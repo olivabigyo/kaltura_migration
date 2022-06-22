@@ -26,5 +26,5 @@
 defined('MOODLE_INTERNAL') || die;
 
 if ($hassiteconfig) {
-    $ADMIN->add('unsupported', new admin_externalpage('tool_kaltura_migration', get_string('pluginname', 'tool_kaltura_migration'), $CFG->wwwroot.'/'.$CFG->admin.'/tool/kaltura_migration/index.php', 'moodle/site:config', true));
+    $ADMIN->add('tools', new admin_externalpage('tool_kaltura_migration', get_string('pluginname', 'tool_kaltura_migration'), $CFG->wwwroot.'/'.$CFG->admin.'/tool/kaltura_migration/index.php', 'moodle/site:config'));
 }
