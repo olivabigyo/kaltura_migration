@@ -15,19 +15,19 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Privacy Subsystem implementation for tool_replace.
+ * Privacy Subsystem implementation for tool_kaltura_migration.
  *
- * @package    tool_replace
- * @copyright  2018 Zig Tan <zig@moodle.com>
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package    tool
+ * @subpackage kaltura_migration
+ * @copyright  2022 SWITCH {@link http://switch.ch}
  */
 
-namespace tool_replace\privacy;
+namespace tool_kaltura_migration\privacy;
 
 defined('MOODLE_INTERNAL') || die();
 
 /**
- * Privacy Subsystem for tool_replace implementing null_provider.
+ * Privacy Subsystem for tool_kaltura_migration implementing null_provider.
  *
  * @copyright  2018 Zig Tan <zig@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later

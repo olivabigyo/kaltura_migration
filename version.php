@@ -20,8 +20,6 @@
  * @package    tool
  * @subpackage kaltura_migration
  * @copyright  2022 SWITCH {@link http://switch.ch}
- * @author Esteve Badia Orive {@link mailto:badia.orive@gmail.com }
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();

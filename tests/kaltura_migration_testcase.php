@@ -15,7 +15,15 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-require_once(__DIR__ . '/fixtures/testable_controller.php');
+/**
+ * Unit tests
+ *
+ * @package    tool
+ * @subpackage kaltura_migration
+ * @copyright  2022 SWITCH {@link http://switch.ch}
+ */
+
+ require_once(__DIR__ . '/fixtures/testable_controller.php');
 
 class kaltura_migration_testcase extends advanced_testcase {
    public function test_extract_urls() {

@@ -15,12 +15,11 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Link to unsupported kaltura migration script.
+ * Link to tool page from Admin settings.
  *
  * @package    tool
- * @subpackage replace
- * @copyright  2011 Petr Skoda {@link http://skodak.org}
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @subpackage kaltura_migration
+ * @copyright  2022 SWITCH {@link http://switch.ch}
  */
 
 defined('MOODLE_INTERNAL') || die;

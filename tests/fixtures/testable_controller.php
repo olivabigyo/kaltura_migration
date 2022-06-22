@@ -14,6 +14,13 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+/**
+ * Unit tests helper class
+ *
+ * @package    tool
+ * @subpackage kaltura_migration
+ * @copyright  2022 SWITCH {@link http://switch.ch}
+ */
 
 class testable_kaltura_migration_controller extends tool_kaltura_migration_controller {
   public function extractUrls($text){

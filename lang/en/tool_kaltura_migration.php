@@ -19,7 +19,7 @@
  *
  * @package    tool
  * @subpackage kaltura_migration
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @copyright  2022 SWITCH {@link http://switch.ch}
  */
 
 $string['pluginname'] = 'Kaltura Migration';

@@ -15,10 +15,11 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Video services migration to kaltura by SWITCH.
+ * Video services migration to kaltura by SWITCH, main page.
  *
- * @package    tool_kaltura_migration
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package    tool
+ * @subpackage kaltura_migration
+ * @copyright  2022 SWITCH {@link http://switch.ch}
  */
 
 define('NO_OUTPUT_BUFFERING', true);
@@ -28,8 +29,6 @@ require_once($CFG->dirroot.'/course/lib.php');
 require_once($CFG->libdir.'/adminlib.php');
 
 admin_externalpage_setup('tool_kaltura_migration');
-
-
 
 $migration = new tool_kaltura_migration_controller();
 

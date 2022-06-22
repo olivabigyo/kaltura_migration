@@ -17,8 +17,9 @@
 /**
  * Site wide kaltura migration form.
  *
- * @package    tool_kaltura_migration
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package    tool
+ * @subpackage kaltura_migration
+ * @copyright  2022 SWITCH {@link http://switch.ch}
  */
 
 defined('MOODLE_INTERNAL') || die();
