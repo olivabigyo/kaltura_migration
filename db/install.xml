@@ -9,13 +9,15 @@
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="tblname" TYPE="char" LENGTH="30" NOTNULL="true" SEQUENCE="false" COMMENT="Table name"/>
         <FIELD NAME="colname" TYPE="char" LENGTH="128" NOTNULL="true" SEQUENCE="false" COMMENT="Column name"/>
+        <FIELD NAME="resid" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="Record id" />
         <FIELD NAME="url" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="Video URL"/>
+        <FIELD NAME="replaced" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Already replaced?"/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
       </KEYS>
       <INDEXES>
-        <INDEX NAME="video-location" UNIQUE="false" FIELDS="tblname, colname"/>
+        <INDEX NAME="video-location" UNIQUE="false" FIELDS="tblname, colname, resid"/>
         <INDEX NAME="video-url" UNIQUE="false" FIELDS="url"/>
       </INDEXES>
     </TABLE>

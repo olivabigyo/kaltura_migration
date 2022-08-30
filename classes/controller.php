@@ -45,7 +45,7 @@ class tool_kaltura_migration_controller {
    * Search for video URLs in the specified table and column.
    * @param string $table Name of the table.
    * @param database_column_info $column Column object.
-   * @return array of matching full column values.
+   * @return array of matching full column values indexed by id field (if exists).
    */
   protected function search_table_column($table, $column) {
     global $DB;
@@ -64,8 +64,21 @@ class tool_kaltura_migration_controller {
       $params[] = '%' . $DB->sql_like_escape($pattern) . '%';
     }
 
-    $result = $DB->get_fieldset_select($table, $column->name, $where, $params);
+    if ($this->tableHasId($table)) {
+      $result = $DB->get_records_select_menu($table, $where, $params, '', 'id, ' . $column->name);
+    } else {
+      $result = $DB->get_fieldset_select($table, $column->name, $where);
+    }
     return $result;
+  }
+  /**
+   * @param string table The table name.
+   * @return boolean If the table has id field.
+   */
+  protected function tableHasId($table) {
+    global $DB;
+    $columns = $DB->get_columns($table);
+    return isset($columns['id']);
   }
   /**
    * @param string text The text to extract the video urls from.
@@ -120,20 +133,21 @@ class tool_kaltura_migration_controller {
           }
           // Get matching fields.
           $result = $this->search_table_column($table, $column);
-          // Extract urls.
-          $urls = [];
-          foreach ($result as $field) {
-            $urls = array_merge($urls, $this->extractUrls($field));
+          // Extract urls and prepare records for db insertion.
+          $records = [];
+          foreach ($result as $id => $field) {
+            $urls  = $this->extractUrls($field);
+            foreach ($urls as $url) {
+              $records[] = array(
+                'tblname' => $table,
+                'colname' => $column->name,
+                'resid' => $id,
+                'url' => $url,
+                'replaced' => false,
+              );
+            }
           }
           // Save results into DB.
-          $records = array_map(function($url) use ($table, $column) {
-            return array(
-              'tblname' => $table,
-              'colname' => $column->name,
-              'url' => $url
-            );
-          }, $urls);
-
           $DB->insert_records('tool_kaltura_migration_urls', $records);
         }
       }
@@ -158,6 +172,11 @@ class tool_kaltura_migration_controller {
   function countResults() {
     global $DB;
     return $DB->count_records('tool_kaltura_migration_urls');
+  }
+
+  function countReplaced() {
+    global $DB;
+    return $DB->count_records('tool_kaltura_migration_urls', ['replaced' => true]);
   }
 
   protected function getCSV() {
@@ -195,5 +214,108 @@ class tool_kaltura_migration_controller {
     }
     $file = $fs->create_file_from_string($fileinfo, $this->getCSV());
     send_stored_file($file, 0, 0, true);
+  }
+
+  /**
+   * Replace switch video embeds by kaltura embeds.
+   */
+  function replace($test = false) {
+    global $DB;
+    $records = $DB->get_records('tool_kaltura_migration_urls');
+    if ($test) {
+      echo '<table border="1">';
+    }
+    $i = 1;
+    $replaced = 0;
+    foreach ($records as $record) {
+      $table = $record->tblname;
+      $column = $record->colname;
+      $id = $record->resid;
+      $url = $record->url;
+      if (!$record->replaced) {
+        if ($test) {
+          echo '<tr><td>' . $i++ . ' ('. $table . ' ' . $id . ')</td>';
+        }
+        if ($this->replaceVideo($table, $column, $id, $url, $test)) {
+          $record->replaced = true;
+          $DB->update_record('tool_kaltura_migration_urls', $record);
+          $replaced++;
+        }
+        if ($test) {
+          echo '</tr>';
+        }
+      }
+    }
+    if ($test) {
+      echo '</table>';
+    }
+    return $replaced;
+  }
+
+  /**
+   * Replaces a single video embedding from a DB text field.
+   */
+  function replaceVideo($table, $column, $id, $url, $test = false) {
+    $iframe_reg = '/<iframe\s[^>]*src\s*=\s*"' . preg_quote($url, "/") . '"[^>]*width="(\d+)"\s+height="(\d+)"[^>]*><\/iframe>/';
+    $iframe2_reg = '/<iframe\s[^>]*width="(\d+)"\s+height="(\d+)"[^>]*src\s*=\s*"' . preg_quote($url, "/") . '"[^>]*><\/iframe>/';
+    $video_reg = '/<video\s[^>]*width="(\d+)"\s+height="(\d+)"[^>]*><source\ssrc="'. preg_quote($url, "/") .'">[^<]*<\/video>/';
+    $video2_reg = '/<video\s[^>]*><source\s[^>]*src="' . preg_quote($url, "/") . '"[^>]*>.*?<\/video>/';
+
+    global $DB;
+    $content = $DB->get_field($table, $column, ['id' => $id]);
+    if ($test) {
+      echo '<td>' . $content . '</td>';
+    }
+    // replace video embeddings
+    $content = preg_replace_callback([$iframe_reg, $iframe2_reg, $video_reg, $video2_reg], function($matches) use ($url) {
+      $width = count($matches) > 2 ? $matches[1] : null;
+      $height = count($matches) > 2 ? $matches[2] : null;
+      return $this->getKalturaEmbedCode($url, $width, $height);
+    }, $content);
+    // replace video links and other references (not embeddings)
+    $content = str_replace($url, $this->getKalturaVideoUrl($url), $content);
+    if ($test) {
+      echo '<td>' . $content . '</td>';
+      return false;
+    } else {
+      return $DB->set_field($table, $column, $content, ['id' => $id]);
+    }
+  }
+
+  function getKalturaVideoUrl($url) {
+    // see https://knowledge.kaltura.com/help/how-to-retrieve-the-download-or-streaming-url-using-api-calls
+    $serviceUrl = "https://api.cast.switch.ch";
+    $YourPartnerId = "105";
+    $YourEntryId = "0_d920p5hf";
+    $VideoFlavorId = '0_yx52xqhg';
+    $StreamingFormat = 'url';
+    // unused params.
+    $Protocol = 'https';
+    $ks = '';
+    $extra = "/protocol/${Protocol}/ks/${ks}";
+    // end unused params.
+    $ext = 'mp4';
+    return "{$serviceUrl}/p/{$YourPartnerId}/sp/10500/playManifest/entryId/{$YourEntryId}/flavorParamId/{$VideoFlavorId}/format/{$StreamingFormat}/video.{$ext}";
+  }
+
+  function getKalturaEmbedCode($url, $width = null, $height = null) {
+    $style  = '';
+    if ($width !== null && $height !== null) {
+      $style = "style=\"width: {$width}px; height: {$height}px;\"";
+    }
+    $hash = mt_rand();
+    return <<<EOD
+<script src="https://api.cast.switch.ch/p/105/sp/10500/embedIframeJs/uiconf_id/23448506/partner_id/105"></script>
+<div id="kaltura_player_{$hash}" {$style}></div>
+<script>
+kWidget.embed({
+  "targetId": "kaltura_player_{$hash}",
+  "wid": "_105",
+  "uiconf_id": 23448506,
+  "flashvars": {},
+  "entry_id": "0_d920p5hf"
+});
+</script>
+EOD;
   }
 }

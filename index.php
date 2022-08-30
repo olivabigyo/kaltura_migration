@@ -32,7 +32,7 @@ admin_externalpage_setup('tool_kaltura_migration');
 
 $migration = new tool_kaltura_migration_controller();
 
-$form = new tool_kaltura_migration_form(null, ['numresults' => $migration->countResults()]);
+$form = new tool_kaltura_migration_form(null, ['numresults' => $migration->countResults(), 'numreplaced' => $migration->countReplaced()]);
 
 if ($data = $form->get_data()) {
   if ($data->op == get_string('downloadcsv', 'tool_kaltura_migration')) {
@@ -47,7 +47,7 @@ echo $OUTPUT->heading(get_string('pageheader', 'tool_kaltura_migration'));
 
 echo $OUTPUT->box_start();
 echo $OUTPUT->notification(get_string('excludedtables', 'tool_kaltura_migration'), \core\output\notification::NOTIFY_INFO);
-echo $OUTPUT->notification(get_string('searchdeletes', 'tool_kaltura_migration'), \core\output\notification::NOTIFY_INFO);
+echo $OUTPUT->notification(get_string('backupwarning', 'tool_kaltura_migration'), \core\output\notification::NOTIFY_WARNING);
 echo $OUTPUT->box_end();
 
 if ($data) {
@@ -56,12 +56,19 @@ if ($data) {
     $migration->execute($progress);
   } else if ($data->op == get_string('deleterecords', 'tool_kaltura_migration')) {
     $migration->deleteResults();
+  } else if ($data->op == get_string('testreplacevideos', 'tool_kaltura_migration')) {
+    $migration->replace(true);
+  } else if ($data->op == get_string('replacevideos', 'tool_kaltura_migration')) {
+    $replaced = $migration->replace();
+    echo $OUTPUT->box_start();
+    echo $OUTPUT->notification(get_string('replacednvideos', 'tool_kaltura_migration', $replaced), \core\output\notification::NOTIFY_SUCCESS);
+    echo $OUTPUT->box_end();
   }
 }
 
 
 // Recreate form after operation.
-$form = new tool_kaltura_migration_form(null, ['numresults' => $migration->countResults()]);
+$form = new tool_kaltura_migration_form(null, ['numresults' => $migration->countResults(), 'numreplaced' => $migration->countReplaced()]);
 
 // Display form. It will depend on the current status.
 $form->display();
