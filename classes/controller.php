@@ -24,14 +24,20 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+global $CFG;
 // db_should_replace function.
 require_once($CFG->libdir . '/adminlib.php');
+require_once($CFG->dirroot . '/course/modlib.php');
+require_once($CFG->dirroot . '/mod/lti/locallib.php');
+require_once($CFG->dirroot . '/mod/lti/edit_form.php');
+
+require_once(__DIR__ . '/api.php');
 
 class tool_kaltura_migration_controller {
   /** @var \core\progress\base Progress bar for the current operation. */
   protected $progress;
   /** @var array video URL subsctrings to search for*/
-  protected array $hosts = ['tube.switch.ch', 'cast.switch.ch'];
+  protected array $hosts = ['tube.switch.ch', 'cast.switch.ch', 'download.cast.switch.ch'];
 
   /**
    * @param \core\progress\base $progress Progress bar object, not started.
@@ -217,45 +223,62 @@ class tool_kaltura_migration_controller {
   }
 
   /**
+   * @return array
+  */
+  function getReferenceIdsFromUrl($url) {
+    if (preg_match('#https?://[a-zA-z0-9\._\-/]*?/([a-f0-9\-]{36})/([a-f0-9\-]{36})/.*#', $url, $matches)) {
+      return [$matches[1], $matches[2]];
+    }
+    if (preg_match('#https?://[a-zA-z0-9\._\-/]*?/([a-f0-9]{8})#', $url, $matches)) {
+      return [$matches[1]];
+    }
+    return false;
+  }
+
+  /**
    * Replace switch video embeds by kaltura embeds.
    */
   function replace($test = false) {
     global $DB;
     $records = $DB->get_records('tool_kaltura_migration_urls');
-    if ($test) {
-      echo '<table border="1">';
-    }
+    $api = new tool_kaltura_migration_api();
+    echo '<table border="1">';
     $i = 1;
     $replaced = 0;
     foreach ($records as $record) {
       $table = $record->tblname;
-      $column = $record->colname;
       $id = $record->resid;
-      $url = $record->url;
       if (!$record->replaced) {
-        if ($test) {
-          echo '<tr><td>' . $i++ . ' ('. $table . ' ' . $id . ')</td>';
+        echo '<tr><td>' . $i++ . ' ('. $table . ' ' . $id . ')</td>';
+        $column = $record->colname;
+        $url = $record->url;
+        $referenceIds = $this->getReferenceIdsFromUrl($url);
+        if (!$referenceIds) {
+          echo '<td>Error: could not get refid from url ' . $url . '</td>';
+        } else {
+          $entry = $api->getMediaByReferenceIds($referenceIds);
+          if (!$entry) {
+            echo '<td>Error: could not get Kaltura media with refid ' . implode(',', $referenceIds) . '</td>';
+          } else if ($this->replaceVideo($table, $column, $id, $url, $entry, $test)) {
+            $record->replaced = true;
+            $DB->update_record('tool_kaltura_migration_urls', $record);
+            $replaced++;
+            echo '<td>Video replaced with refid ' . implode(',', $referenceIds) . '</td>';
+          } else if (!$test) {
+            echo '<td>Error: Could not replace html content.</td>';
+          }
         }
-        if ($this->replaceVideo($table, $column, $id, $url, $test)) {
-          $record->replaced = true;
-          $DB->update_record('tool_kaltura_migration_urls', $record);
-          $replaced++;
-        }
-        if ($test) {
-          echo '</tr>';
-        }
+        echo '</tr>';
       }
     }
-    if ($test) {
-      echo '</table>';
-    }
+    echo '</table>';
     return $replaced;
   }
 
   /**
    * Replaces a single video embedding from a DB text field.
    */
-  function replaceVideo($table, $column, $id, $url, $test = false) {
+  function replaceVideo($table, $column, $id, $url, $entry, $test = false) {
     $iframe_reg = '/<iframe\s[^>]*src\s*=\s*"' . preg_quote($url, "/") . '"[^>]*width="(\d+)"\s+height="(\d+)"[^>]*><\/iframe>/';
     $iframe2_reg = '/<iframe\s[^>]*width="(\d+)"\s+height="(\d+)"[^>]*src\s*=\s*"' . preg_quote($url, "/") . '"[^>]*><\/iframe>/';
     $video_reg = '/<video\s[^>]*width="(\d+)"\s+height="(\d+)"[^>]*><source\ssrc="'. preg_quote($url, "/") .'">[^<]*<\/video>/';
@@ -267,13 +290,13 @@ class tool_kaltura_migration_controller {
       echo '<td>' . $content . '</td>';
     }
     // replace video embeddings
-    $content = preg_replace_callback([$iframe_reg, $iframe2_reg, $video_reg, $video2_reg], function($matches) use ($url) {
+    $content = preg_replace_callback([$iframe_reg, $iframe2_reg, $video_reg, $video2_reg], function($matches) use ($entry) {
       $width = count($matches) > 2 ? $matches[1] : null;
       $height = count($matches) > 2 ? $matches[2] : null;
-      return $this->getKalturaEmbedCode($url, $width, $height);
+      return $this->getKalturaEmbedCode($entry, $width, $height);
     }, $content);
     // replace video links and other references (not embeddings)
-    $content = str_replace($url, $this->getKalturaVideoUrl($url), $content);
+    $content = str_replace($url, $this->getKalturaVideoUrl($entry), $content);
     if ($test) {
       echo '<td>' . $content . '</td>';
       return false;
@@ -282,23 +305,11 @@ class tool_kaltura_migration_controller {
     }
   }
 
-  function getKalturaVideoUrl($url) {
-    // see https://knowledge.kaltura.com/help/how-to-retrieve-the-download-or-streaming-url-using-api-calls
-    $serviceUrl = "https://api.cast.switch.ch";
-    $YourPartnerId = "105";
-    $YourEntryId = "0_d920p5hf";
-    $VideoFlavorId = '0_yx52xqhg';
-    $StreamingFormat = 'url';
-    // unused params.
-    $Protocol = 'https';
-    $ks = '';
-    $extra = "/protocol/${Protocol}/ks/${ks}";
-    // end unused params.
-    $ext = 'mp4';
-    return "{$serviceUrl}/p/{$YourPartnerId}/sp/10500/playManifest/entryId/{$YourEntryId}/flavorParamId/{$VideoFlavorId}/format/{$StreamingFormat}/video.{$ext}";
+  function getKalturaVideoUrl($entry) {
+    return $entry->dataUrl;
   }
 
-  function getKalturaEmbedCode($url, $width = null, $height = null) {
+  function getKalturaEmbedCode($entry, $width = null, $height = null) {
     $style  = '';
     if ($width !== null && $height !== null) {
       $style = "style=\"width: {$width}px; height: {$height}px;\"";
@@ -313,9 +324,164 @@ kWidget.embed({
   "wid": "_105",
   "uiconf_id": 23448506,
   "flashvars": {},
-  "entry_id": "0_d920p5hf"
+  "entry_id": "{$entry->id}"
 });
 </script>
 EOD;
   }
+
+  /**
+   * @return int the number of opencast modules.
+   */
+  function countModules() {
+    global $DB;
+    $id = $DB->get_field('modules', 'id', ['name' =>'opencast']);
+    return $DB->count_records('course_modules', ['module'=> $id]);
+  }
+
+  /**
+   * Replace every course module of type opencast by a LTI external tool of type
+   * "Media Gallery".
+   *
+   * @return mixed boolean TRUE if no errors, an array of error messages if any error.
+   */
+  function replaceModules($testing = false) {
+    // Get all switchcast modules.
+    $cms = $this->getAllSwitchCastModules();
+    $errors = [];
+    $api = new tool_kaltura_migration_api();
+
+    echo '<table border="1">';
+    $i = 1;
+    foreach ($cms as $cm) {
+      echo "<tr><td>$i</td><td>";
+      $i++;
+      $instance = $this->getSwitchCastInstance($cm);
+      // Fetch category.
+      $category = $api->getCategoryByReferenceId($instance->ext_id);
+      if ($category !== false) {
+        // Create a new Media Gallery LTI cm replacing switchcast.
+        $modinfo = $this->getLTIModuleInfoFromSwitchCast($cm, $instance);
+        if ($testing) {
+          echo "<p>Found kaltura category for Switchcast module id {$cm->id} name {$instance->name}.</p>";
+          echo '<p>Ready to migrate!</p>';
+        } else {
+          $modinfo = $this->createModule($cm, $modinfo);
+          // Change the name of the category so that the Media Gallery will access this category.
+          $category_name = $cm->course . '-' . $modinfo->coursemodule;
+          $api->setCategoryName($category, $category_name);
+          // Remove the switchcast cm.
+          course_delete_module($cm->id);
+          echo "<p>Successfully migrated <em>{$instance->name}</em>!</p>";
+        }
+      }
+      else {
+        // Category not found. Report error!
+        $error = $this->swithCastModuleErrorMessage($cm, "Category not found or duplicate in kaltura server with reference id {$instance->ext_id}.");
+        echo $error;
+        $errors[] = $error;
+      }
+      echo '</td></tr>' . "\n";
+    }
+    echo '</table>';
+    return (count($errors) == 0) ? true : $errors;
+  }
+
+  /**
+   * @param object $cm old switchcast course module.
+   * @param object $modinfo LTI modinfo object.
+   * @return object modinfo.
+   */
+  protected function createModule($cm, $modinfo) {
+    global $DB;
+    //Create Module.
+    $modinfo = create_module($modinfo);
+    // Put module in the right spot within the section.
+    $section = $DB->get_record('course_sections', ['course' => $modinfo->course, 'section' => $modinfo->section]);
+    $newsequence = preg_replace("/(^|,)({$cm->id})(,|$)/", '${1}' . $modinfo->coursemodule . ',${2}${3}', $section->sequence);
+    $DB->set_field("course_sections", "sequence", $newsequence, array("id" => $section->id));
+    return $modinfo;
+  }
+
+  /**
+   * @return array all the course modules of type opencast.
+   */
+  protected function getAllSwitchCastModules() {
+    global $DB;
+    return $DB->get_records_sql("SELECT cm.*, m.name as modname
+      FROM {modules} m, {course_modules} cm
+      WHERE cm.module = m.id AND m.name = ?", array('opencast'));
+  }
+
+  /**
+   * @param object $cm course_module record.
+   * @return object the opencast instance.
+   */
+  protected function getSwitchCastInstance($cm) {
+    global $DB;
+    $instance = $DB->get_record('opencast', ['id' => $cm->instance]);
+    return $instance;
+  }
+
+  /**
+   * Build error message referring a particular opencast course module instance.
+   * @param object $cm course module record.
+   * @param string $msg error detail message
+  */
+  protected function swithCastModuleErrorMessage($cm, $msg) {
+    return "Error in opencast course module id {$cm->id} from course id {$cm->course}. " . $msg;
+  }
+
+  /**
+   * Build the moduleinfo data object for a new LTI module replacing the switcast
+   * module given by the two parameters.
+   *
+   * @param stdClass $cm SwitchCast course module.
+   * @param stdClass $instance SwitchCast instance.
+   */
+  protected function getLTIModuleInfoFromSwitchCast($cm, $instance) {
+    global $DB;
+    $course = get_course($cm->course);
+    $lti_module = $DB->get_record('modules', ['name' => 'lti']);
+    // Get switchcast data
+    list($cm, $context, $module, $data, $cw) = get_moduleinfo_data($cm, $course);
+    // Change some fields
+    $data->module = $lti_module->id;
+    $data->modulename = 'lti';
+    $data->instance = 0;
+    $data->add = 'lti';
+    // Get video gallery type id.
+    $type = $DB->get_record_select('lti_types', "baseurl LIKE '%/hosted/index/course-gallery'");
+
+    $lti = [
+      'name' => $instance->name,
+      'intro' => $instance->intro,
+      'introformat' => $instance->introformat,
+      'timecreated' => isset($instance->timecreated) ? $instance->timecreated : time(),
+      'timemodified' => time(),
+      'typeid' => $type->id,
+      'toolurl' => null,
+      'securetoolurl' => null,
+      'instructorchoicesendname' => 1,
+      'instructorchoicesendemailaddr' => 1,
+      'instructorchoiceallowroster' => null,
+      'instructorchoiceallowsetting' => null,
+      'instructorcustomparameters' => '',
+      'instructorchoiceacceptgrades' => 0,
+      'grade' => 0,
+      'launchcontainer' => 1,
+      'resourcekey' => null,
+      'password' => null,
+      'debuglaunch' => 0,
+      'showtitlelaunch' => 1,
+      'showdescriptionlaunch' => 0,
+      'servicesalt' => null,
+      'icon' => null,
+      'secureicon' => null
+    ];
+    $data = (object)array_merge((array)$data, $lti);
+
+    return $data;
+  }
+
 }

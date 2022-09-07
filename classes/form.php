@@ -37,8 +37,11 @@ class tool_kaltura_migration_form extends moodleform
 
         $numresults = $this->_customdata['numresults'];
         $numreplaced = $this->_customdata['numreplaced'];
+        $nummodules = $this->_customdata['nummodules'];
+
         $hasresults = $numresults > 0;
         $hasreplacements = $numresults > $numreplaced;
+        $hasmodules = $nummodules > 0;
 
         $a = new stdClass;
         $a->numresults = $numresults;
@@ -51,7 +54,7 @@ class tool_kaltura_migration_form extends moodleform
 
         $buttonarray = [];
         if ($hasresults) {
-            $buttonarray[] = $mform->createElement('submit', 'op', get_string('downloadcsv', 'tool_kaltura_migration'));
+            //$buttonarray[] = $mform->createElement('submit', 'op', get_string('downloadcsv', 'tool_kaltura_migration'));
             $buttonarray[] = $mform->createElement('submit', 'op', get_string('deleterecords', 'tool_kaltura_migration'));
         }
         if ($hasreplacements) {
@@ -59,6 +62,11 @@ class tool_kaltura_migration_form extends moodleform
             $buttonarray[] = $mform->createElement('submit', 'op', get_string('replacevideos', 'tool_kaltura_migration'));
         }
         $buttonarray[] = $mform->createElement('submit', 'op', get_string('search', 'tool_kaltura_migration'));
+
+        if ($hasmodules) {
+            $buttonarray[] = $mform->createElement('submit', 'op', get_string('testreplacemodules', 'tool_kaltura_migration'));
+            $buttonarray[] = $mform->createElement('submit', 'op', get_string('replacemodules', 'tool_kaltura_migration'));
+        }
 
         $mform->addGroup($buttonarray, 'buttonar', '', ' ', false);
 

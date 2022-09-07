@@ -32,7 +32,11 @@ admin_externalpage_setup('tool_kaltura_migration');
 
 $migration = new tool_kaltura_migration_controller();
 
-$form = new tool_kaltura_migration_form(null, ['numresults' => $migration->countResults(), 'numreplaced' => $migration->countReplaced()]);
+$form = new tool_kaltura_migration_form(null, [
+  'numresults' => $migration->countResults(),
+  'numreplaced' => $migration->countReplaced(),
+  'nummodules' => $migration->countModules()
+]);
 
 if ($data = $form->get_data()) {
   if ($data->op == get_string('downloadcsv', 'tool_kaltura_migration')) {
@@ -63,12 +67,20 @@ if ($data) {
     echo $OUTPUT->box_start();
     echo $OUTPUT->notification(get_string('replacednvideos', 'tool_kaltura_migration', $replaced), \core\output\notification::NOTIFY_SUCCESS);
     echo $OUTPUT->box_end();
+  } else if ($data->op == get_string('replacemodules', 'tool_kaltura_migration')) {
+    $migration->replaceModules();
+  } else if ($data->op == get_string('testreplacemodules', 'tool_kaltura_migration')) {
+    $migration->replaceModules(true);
   }
 }
 
 
 // Recreate form after operation.
-$form = new tool_kaltura_migration_form(null, ['numresults' => $migration->countResults(), 'numreplaced' => $migration->countReplaced()]);
+$form = new tool_kaltura_migration_form(null, [
+  'numresults' => $migration->countResults(),
+  'numreplaced' => $migration->countReplaced(),
+  'nummodules' => $migration->countModules()]
+);
 
 // Display form. It will depend on the current status.
 $form->display();

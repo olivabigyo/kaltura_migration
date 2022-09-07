@@ -35,3 +35,5 @@ $string['deleterecords'] = "Delete records";
 $string['replacevideos'] = "Replace videos";
 $string['testreplacevideos'] = "Test replace videos";
 $string['replacednvideos'] = 'Replaced {$a} videos.';
+$string['testreplacemodules'] = 'Test replace SwitchCast activities';
+$string['replacemodules'] = 'Replace SwitchCast activities';
