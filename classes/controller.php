@@ -110,19 +110,61 @@ class tool_kaltura_migration_controller {
   protected function shouldSearch($table, $column = '') {
     return $table !== 'tool_kaltura_migration_urls' && db_should_replace($table, $column);
   }
+
+  /**
+   * @param string $table DB table name
+   * @return int the course id related to the record $id from table $table, or -1
+   * if unknown or not applicable.
+   */
+  protected function getRecordCourse($table, $columns, $id) {
+    global $DB;
+    if (!isset($columns['id'])) {
+      return -1;
+    }
+    $course = false;
+    if (isset($columns['course'])) {
+      $course = $DB->get_field($table, 'course', ['id' => $id]);
+    }
+    if ($table == 'question') {
+      $course = $DB->get_field_sql(
+        'SELECT c.instanceid FROM {context} c
+        JOIN {question_categories} qc ON qc.contextid = c.id
+        JOIN {question} q ON q.category = qc.id
+        WHERE c.contextlevel = 50 AND q.id = ?',
+        [$id]);
+    }
+    if ($table == 'wiki_pages') {
+      $course = $DB->get_field_sql(
+        'SELECT w.course FROM {wiki} w
+        JOIN {wiki_subwikis} s ON s.wikiid = w.id
+        JOIN {wiki_pages} p ON p.subwikiid = s.id
+        WHERE p.id = ?',
+        [$id]);
+    }
+    if ($table == 'wiki_versions') {
+      $course = $DB->get_field_sql(
+        'SELECT w.course FROM {wiki} w
+        JOIN {wiki_subwikis} s ON s.wikiid = w.id
+        JOIN {wiki_pages} p ON p.subwikiid = s.id
+        JOIN {wiki_versions} v ON v.pageid = p.id
+        WHERE v.id = ?',
+        [$id]);
+    }
+    return ($course === false) ? -1 : $course;
+  }
   /**
    * Search video URLs in the whole database.
    *
   */
   protected function search() {
     global $DB;
-
     if (!$tables = $DB->get_tables()) {    // No tables yet at all.
       return false;
     }
     \core_php_time_limit::raise();
 
     $this->progress->start_progress('Searching video urls across all database.', count($tables));
+    purge_all_caches();
     $progress = 0;
     // Iterate over all DB tables.
     foreach ($tables as $table) {
@@ -147,6 +189,8 @@ class tool_kaltura_migration_controller {
           $records = [];
           foreach ($result as $id => $field) {
             $urls  = $this->extractUrls($field);
+            $course = $this->getRecordCourse($table, $columns, $id);
+
             foreach ($urls as $url) {
               $records[] = array(
                 'tblname' => $table,
@@ -154,6 +198,7 @@ class tool_kaltura_migration_controller {
                 'resid' => $id,
                 'url' => $url,
                 'replaced' => false,
+                'course' => $course
               );
             }
           }
@@ -233,7 +278,7 @@ class tool_kaltura_migration_controller {
     if (preg_match('#https?://[a-zA-z0-9\._\-/]*?/([a-f0-9\-]{36})/([a-f0-9\-]{36})/.*#', $url, $matches)) {
       return [$matches[1], $matches[2]];
     }
-    if (preg_match('#https?://[a-zA-z0-9\._\-/]*?/([a-f0-9]{8})#', $url, $matches)) {
+    if (preg_match('#https?://[a-zA-z0-9\._\-/]*/([a-zA-Z0-9]{8,10})$#', $url, $matches)) {
       return [$matches[1]];
     }
     return false;
@@ -261,6 +306,7 @@ class tool_kaltura_migration_controller {
         $referenceIds = $this->getReferenceIdsFromUrl($url);
         if (!$referenceIds) {
           $error = 'Error: could not get refid from url ' . $url;
+          echo "<td>$error</td>";
           $errors[] = $error;
         } else {
           $entry = $api->getMediaByReferenceIds($referenceIds);
