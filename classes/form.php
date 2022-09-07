@@ -40,6 +40,7 @@ class tool_kaltura_migration_form extends moodleform
         $nummodules = $this->_customdata['nummodules'];
         $numerrors = isset($this->_customdata['numerrors']) ? $this->_customdata['numerrors'] : 0;
         $op = isset($this->_customdata['op']) ? $this->_customdata['op'] : false;
+        $course = isset($this->_customdata['course']) ? $this->_customdata['course'] : false;
 
         $hasresults = $numresults > 0;
         $hasreplacements = $numresults > $numreplaced;
@@ -58,17 +59,20 @@ class tool_kaltura_migration_form extends moodleform
 
         $buttonarray = [];
         if ($hasresults) {
-            $buttonarray[] = $mform->createElement('submit', 'op', get_string('deleterecords', 'tool_kaltura_migration'));
+            $buttonarray[] = $mform->createElement('submit', 'opdelete', get_string('deleterecords', 'tool_kaltura_migration'));
         } else {
-            $buttonarray[] = $mform->createElement('submit', 'op', get_string('search', 'tool_kaltura_migration'));
+            $buttonarray[] = $mform->createElement('submit', 'opsearch', get_string('search', 'tool_kaltura_migration'));
         }
 
         if ($hasreplacements) {
-            $buttonarray[] = $mform->createElement('submit', 'op', get_string('testreplacevideos', 'tool_kaltura_migration'));
-            if ($op == get_string('testreplacevideos', 'tool_kaltura_migration')) {
+            $courses = $this->getReplaceVideoCourses();
+            $mform->addElement('select', 'coursesreplacevideos', get_string('course'), $courses);
+            $buttonarray[] = $mform->createElement('submit', 'optestreplacevideos', get_string('testreplacevideos', 'tool_kaltura_migration'));
+            if ($op == 'optestreplacevideos') {
                 $message = $numerrors > 0 ? get_string('thereareerrors', 'tool_kaltura_migration', $numerrors) : get_string('noerrors', 'tool_kaltura_migration');
                 $mform->addElement('static', 'videoerrors', '', $message);
-                $buttonarray[] = $mform->createElement('submit', 'op', get_string('replacevideos', 'tool_kaltura_migration'));
+                $buttonarray[] = $mform->createElement('submit', 'opreplacevideos', get_string('replacevideos', 'tool_kaltura_migration'));
+                $mform->disabledIf('opreplacevideos', 'coursesreplacevideos', 'neq', $course);
             }
         }
         $mform->addGroup($buttonarray, 'buttonar', '', ' ', false);
@@ -78,16 +82,45 @@ class tool_kaltura_migration_form extends moodleform
         $mform->setExpanded('migratemodulesheader');
         if ($hasmodules) {
             $mform->addElement('static', 'message', '', get_string('therearemodules', 'tool_kaltura_migration', $nummodules));
-            $buttonarray[] = $mform->createElement('submit', 'op', get_string('testreplacemodules', 'tool_kaltura_migration'));
 
-            if ($op == get_string('testreplacemodules', 'tool_kaltura_migration')) {
+            $courses = $this->getReplaceVideoCourses();
+            $mform->addElement('select', 'coursesreplacemodules', get_string('course'), $courses);
+
+            $buttonarray[] = $mform->createElement('submit', 'optestreplacemodules', get_string('testreplacemodules', 'tool_kaltura_migration'));
+            if ($op == 'optestreplacemodules') {
                 $message = $numerrors > 0 ? get_string('thereareerrors', 'tool_kaltura_migration', $numerrors) : get_string('noerrors', 'tool_kaltura_migration');
                 $mform->addElement('static', 'videoerrors', '', $message);
-                $buttonarray[] = $mform->createElement('submit', 'op', get_string('replacemodules', 'tool_kaltura_migration'));
+                $buttonarray[] = $mform->createElement('submit', 'opreplacemodules', get_string('replacemodules', 'tool_kaltura_migration'));
+                $mform->disabledIf('opreplacemodules', 'coursesreplacemodules', 'neq', $course);
             }
             $mform->addGroup($buttonarray, 'buttonar2', '', ' ', false);
         } else {
             $mform->addElement('static', 'message', '', get_string('therearenomodules', 'tool_kaltura_migration'));
         }
     }
+
+    protected function getReplaceVideoCourses() {
+        global $DB;
+        $course_ids = $DB->get_fieldset_sql('SELECT DISTINCT course FROM {tool_kaltura_migration_urls}');
+        return $this->getCourseOptions($course_ids);
+    }
+    protected function getReplaceModulesCourses() {
+        global $DB;
+        $course_ids = $DB->get_fieldset_sql('SELECT DISTINCT course FROM {opencast}');
+        return $this->getCourseOptions($course_ids);
+    }
+    protected function getCourseOptions($course_ids) {
+        $courses = ['-2' => get_string('allcourses', 'tool_kaltura_migration')];
+        foreach ($course_ids as $id) {
+            if (intval($id) == -1) {
+                $courses['-1'] = get_string('contentnotincourse', 'tool_kaltura_migration');
+            } else {
+                $course = get_course($id);
+                $courses[$id] = $course->fullname . '(' . $course->shortname . ')';
+            }
+        }
+
+        return $courses;
+    }
+
 }

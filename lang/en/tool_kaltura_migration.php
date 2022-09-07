@@ -45,3 +45,5 @@ $string['thereareerrors'] = 'Found {$a} errors during the test phase. You can st
 $string['noerrors'] = 'There were no errors during the test phase. You can safely proceed with the migration.';
 $string['foundnvideos'] = 'Found {$a} videos from SwitchCast in this site, including embeddings and links.';
 $string['results'] = 'Results';
+$string['allcourses'] = 'All courses';
+$string['contentnotincourse'] = 'Content not in courses';

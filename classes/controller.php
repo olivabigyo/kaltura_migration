@@ -286,12 +286,18 @@ class tool_kaltura_migration_controller {
 
   /**
    * Replace switch video embeds by kaltura embeds.
+   * @param string|int $course id, if nonnegative, content not in any course if -1 and all courses if -2.
    * @return true if no errors, array of error strings if errors.
    */
-  function replace($test = false) {
+  function replace($course = -2, $test = false) {
     global $DB;
     $errors = [];
-    $records = $DB->get_records('tool_kaltura_migration_urls');
+    $conditions = [];
+    if (intval($course) > -2) {
+      $conditions['course'] = $course;
+    }
+    $records = $DB->get_records('tool_kaltura_migration_urls', $conditions);
+
     $api = new tool_kaltura_migration_api();
     echo '<table border="1">';
     $i = 1;

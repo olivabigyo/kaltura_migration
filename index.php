@@ -55,22 +55,34 @@ echo $OUTPUT->notification(get_string('backupwarning', 'tool_kaltura_migration')
 echo $OUTPUT->box_end();
 
 $errors = false;
-if ($data && $data->op) {
+$course = -1;
+$op = false;
+if ($data) {
   echo $OUTPUT->box_start();
   echo $OUTPUT->heading(get_string('results', 'tool_kaltura_migration'), 3);
-  if ($data->op == get_string('search', 'tool_kaltura_migration')) {
+  if (!empty($data->opsearch)) {
+    $op = 'opsearch';
     $progress = new \core\progress\display_if_slow();
     $migration->execute($progress);
-  } else if ($data->op == get_string('deleterecords', 'tool_kaltura_migration')) {
+  } else if (!empty($data->opdelete)) {
+    $op = 'opdelete';
     $migration->deleteResults();
-  } else if ($data->op == get_string('testreplacevideos', 'tool_kaltura_migration')) {
-    $errors = $migration->replace(true);
-  } else if ($data->op == get_string('replacevideos', 'tool_kaltura_migration')) {
-    $errors = $migration->replace();
-  } else if ($data->op == get_string('replacemodules', 'tool_kaltura_migration')) {
-    $errors = $migration->replaceModules();
-  } else if ($data->op == get_string('testreplacemodules', 'tool_kaltura_migration')) {
-    $errors = $migration->replaceModules(true);
+  } else if (!empty($data->optestreplacevideos)) {
+    $op = 'optestreplacevideos';
+    $course = $data->coursesreplacevideos;
+    $errors = $migration->replace($course, true);
+  } else if (!empty($data->opreplacevideos)) {
+    $op = 'opreplacevideos';
+    $course = $data->coursesreplacevideos;
+    $errors = $migration->replace($course);
+  } else if (!empty($data->opreplacemodules)) {
+    $op = 'opreplacemodules';
+    $course = $data->coursesreplacemodules;
+    $errors = $migration->replaceModules($course);
+  } else if (!empty($data->optestreplacemodules)) {
+    $op = 'optestreplacemodules';
+    $course = $data->coursesreplacemodules;
+    $errors = $migration->replaceModules($course, true);
   }
   echo $OUTPUT->box_end();
 }
@@ -82,7 +94,8 @@ $form = new tool_kaltura_migration_form(null, [
   'numreplaced' => $migration->countReplaced(),
   'nummodules' => $migration->countModules(),
   'numerrors' => is_array($errors) ? count($errors) : 0,
-  'op' => ($data) ? $data->op : false,
+  'op' => $op,
+  'course' => $course
 ]);
 
 // Display form. It will depend on the current status.
