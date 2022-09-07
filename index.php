@@ -32,17 +32,35 @@ admin_externalpage_setup('tool_kaltura_migration');
 
 $migration = new tool_kaltura_migration_controller();
 
-$form = new tool_kaltura_migration_form(null, [
-  'numresults' => $migration->countResults(),
-  'numreplaced' => $migration->countReplaced(),
-  'nummodules' => $migration->countModules()
-]);
+$op = false;
+$course = false;
 
-if ($data = $form->get_data()) {
-  if ($data->op == get_string('downloadcsv', 'tool_kaltura_migration')) {
-    $migration->downloadCSV();
-    // downloadCSV ends execution.
-  }
+$coursesreplacevideos = optional_param('coursesreplacevideos', -2, PARAM_INT);
+$coursesreplacemodules = optional_param('coursesreplacemodules', -2, PARAM_INT);
+
+if($opsearch = optional_param('opsearch', 0, PARAM_BOOL)) {
+  $op = 'opsearch';
+}
+if ($opdelete = optional_param('opdelete', 0, PARAM_BOOL)) {
+  $op = 'opdelete';
+}
+if ($optestreplacevideos = optional_param('optestreplacevideos', 0, PARAM_BOOL)) {
+  $op = 'optestreplacevideos';
+}
+if ($opreplacevideos = optional_param('opreplacevideos', 0, PARAM_BOOL)) {
+  $op = 'opreplacevideos';
+}
+if ($optestreplacemodules = optional_param('optestreplacemodules', 0, PARAM_BOOL)) {
+  $op = 'optestreplacemodules';
+}
+if ($opreplacemodules = optional_param('opreplacemodules', 0, PARAM_BOOL)) {
+  $op = 'opreplacemodules';
+}
+
+if ($optestreplacevideos || $opreplacevideos) {
+  $course = $coursesreplacevideos;
+} else if ($optestreplacemodules || $opreplacemodules) {
+  $course = $coursesreplacemodules;
 }
 
 echo $OUTPUT->header();
@@ -52,37 +70,28 @@ echo $OUTPUT->heading(get_string('pageheader', 'tool_kaltura_migration'));
 echo $OUTPUT->box_start();
 echo $OUTPUT->notification(get_string('excludedtables', 'tool_kaltura_migration'), \core\output\notification::NOTIFY_INFO);
 echo $OUTPUT->notification(get_string('backupwarning', 'tool_kaltura_migration'), \core\output\notification::NOTIFY_WARNING);
+if (!$migration->getVideoGalleryLTIType()) {
+  echo $OUTPUT->notification(get_string('nomediagallery', 'tool_kaltura_migration'), \core\output\notification::NOTIFY_ERROR);
+}
 echo $OUTPUT->box_end();
 
 $errors = false;
-$course = -1;
-$op = false;
-if ($data) {
+if ($op) {
   echo $OUTPUT->box_start();
   echo $OUTPUT->heading(get_string('results', 'tool_kaltura_migration'), 3);
-  if (!empty($data->opsearch)) {
-    $op = 'opsearch';
+  if ($opsearch) {
     $progress = new \core\progress\display_if_slow();
     $migration->execute($progress);
-  } else if (!empty($data->opdelete)) {
-    $op = 'opdelete';
+  } else if ($opdelete) {
     $migration->deleteResults();
-  } else if (!empty($data->optestreplacevideos)) {
-    $op = 'optestreplacevideos';
-    $course = $data->coursesreplacevideos;
+  } else if ($optestreplacevideos) {
     $errors = $migration->replace($course, true);
-  } else if (!empty($data->opreplacevideos)) {
-    $op = 'opreplacevideos';
-    $course = $data->coursesreplacevideos;
+  } else if ($opreplacevideos) {
     $errors = $migration->replace($course);
-  } else if (!empty($data->opreplacemodules)) {
-    $op = 'opreplacemodules';
-    $course = $data->coursesreplacemodules;
-    $errors = $migration->replaceModules($course);
-  } else if (!empty($data->optestreplacemodules)) {
-    $op = 'optestreplacemodules';
-    $course = $data->coursesreplacemodules;
+  } else if ($optestreplacemodules) {
     $errors = $migration->replaceModules($course, true);
+  } else if ($opreplacemodules) {
+    $errors = $migration->replaceModules($course);
   }
   echo $OUTPUT->box_end();
 }

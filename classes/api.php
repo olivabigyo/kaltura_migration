@@ -12,11 +12,10 @@ class tool_kaltura_migration_api {
   protected static function buildClient() {
     global $USER;
     // Get some config from local_kaltura plugin.
-    $adminsecret = get_config('local_kaltura', 'adminsecret');
-    $partner_id = get_config('local_kaltura', 'partner_id');
-    // Other required config fields. Should we make these configurable admin
-    // fields?
-    $url = 'https://api.cast.switch.ch';
+    $adminsecret = get_config('tool_kaltura_migration', 'adminsecret');
+    $partner_id = get_config('tool_kaltura_migration', 'partner_id');
+    $url = get_config('tool_kaltura_migration', 'api_url');
+
     $user = $USER->email;
 
     $config = new KalturaConfiguration();

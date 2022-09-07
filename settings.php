@@ -25,5 +25,27 @@
 defined('MOODLE_INTERNAL') || die;
 
 if ($hassiteconfig) {
+    $settings = new admin_settingpage('tool_kaltura_migration_settings', new lang_string('tool_kaltura_migration_settings', 'tool_kaltura_migration'));
+
+    $adminsecret = get_config('local_kaltura', 'adminsecret');
+    $settings->add(new admin_setting_configtext('tool_kaltura_migration/adminsecret',
+    new lang_string('adminsecret', 'tool_kaltura_migration'),
+    new lang_string('adminsecret_description', 'tool_kaltura_migration'),
+    $adminsecret ? $adminsecret : '', PARAM_RAW_TRIMMED));
+
+    $partner_id = get_config('local_kaltura', 'partner_id');
+    $settings->add(new admin_setting_configtext('tool_kaltura_migration/partner_id',
+    new lang_string('partner_id', 'tool_kaltura_migration'),
+    new lang_string('partner_id_description', 'tool_kaltura_migration'),
+    $partner_id ? $partner_id : '', PARAM_RAW_TRIMMED));
+
+    $api_url = 'https://api.cast.switch.ch';
+    $settings->add(new admin_setting_configtext('tool_kaltura_migration/api_url',
+    new lang_string('api_url', 'tool_kaltura_migration'),
+    '',
+    $api_url, PARAM_RAW_TRIMMED));
+
+    $ADMIN->add('tools', $settings);
+
     $ADMIN->add('tools', new admin_externalpage('tool_kaltura_migration', get_string('pluginname', 'tool_kaltura_migration'), $CFG->wwwroot.'/'.$CFG->admin.'/tool/kaltura_migration/index.php', 'moodle/site:config'));
 }

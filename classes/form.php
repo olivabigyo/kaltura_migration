@@ -83,7 +83,7 @@ class tool_kaltura_migration_form extends moodleform
         if ($hasmodules) {
             $mform->addElement('static', 'message', '', get_string('therearemodules', 'tool_kaltura_migration', $nummodules));
 
-            $courses = $this->getReplaceVideoCourses();
+            $courses = $this->getReplaceModulesCourses();
             $mform->addElement('select', 'coursesreplacemodules', get_string('course'), $courses);
 
             $buttonarray[] = $mform->createElement('submit', 'optestreplacemodules', get_string('testreplacemodules', 'tool_kaltura_migration'));

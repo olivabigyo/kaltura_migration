@@ -411,17 +411,20 @@ EOD;
   /**
    * Replace every course module of type opencast by a LTI external tool of type
    * "Media Gallery".
+   * @param int $course The course to migrate, negative for all courses.
+   * @param bool $testing
    *
    * @return mixed boolean TRUE if no errors, an array of error messages if any error.
    */
-  function replaceModules($testing = false) {
+  function replaceModules($course = -2, $testing = false) {
     // Get all switchcast modules.
-    $cms = $this->getAllSwitchCastModules();
+    $cms = $this->getAllSwitchCastModules($course);
     $errors = [];
     $api = new tool_kaltura_migration_api();
 
     echo '<table border="1">';
     $i = 1;
+    $replaced = 0;
     foreach ($cms as $cm) {
       echo "<tr><td>$i</td><td>";
       $i++;
@@ -431,7 +434,9 @@ EOD;
       if ($category !== false) {
         // Create a new Media Gallery LTI cm replacing switchcast.
         $modinfo = $this->getLTIModuleInfoFromSwitchCast($cm, $instance);
-        if ($testing) {
+        if (!$modinfo) {
+          echo "<p>Error: Create first the Media Gallery LTI type.</p>";
+        } else if ($testing) {
           echo "<p>Found kaltura category for Switchcast module id {$cm->id} name {$instance->name}.</p>";
           echo '<p>Ready to migrate!</p>';
         } else {
@@ -441,6 +446,7 @@ EOD;
           $api->setCategoryName($category, $category_name);
           // Remove the switchcast cm.
           course_delete_module($cm->id);
+          $replaced++;
           echo "<p>Successfully migrated <em>{$instance->name}</em>!</p>";
         }
       }
@@ -481,11 +487,17 @@ EOD;
   /**
    * @return array all the course modules of type opencast.
    */
-  protected function getAllSwitchCastModules() {
+  protected function getAllSwitchCastModules($course = -2) {
     global $DB;
-    return $DB->get_records_sql("SELECT cm.*, m.name as modname
+    $sql = "SELECT cm.*, m.name as modname
       FROM {modules} m, {course_modules} cm
-      WHERE cm.module = m.id AND m.name = ?", array('opencast'));
+      WHERE cm.module = m.id AND m.name = 'opencast'";
+    $params = [];
+    if ($course >= 0) {
+      $sql .= ' AND cm.course = ?';
+      $params[] = $course;
+    }
+    return $DB->get_records_sql($sql, $params);
   }
 
   /**
@@ -507,6 +519,11 @@ EOD;
     return "Error in opencast course module id {$cm->id} from course id {$cm->course}. " . $msg;
   }
 
+  public function getVideoGalleryLTIType() {
+    global $DB;
+    return $DB->get_record_select('lti_types', "baseurl LIKE '%/hosted/index/course-gallery'");
+  }
+
   /**
    * Build the moduleinfo data object for a new LTI module replacing the switcast
    * module given by the two parameters.
@@ -526,8 +543,10 @@ EOD;
     $data->instance = 0;
     $data->add = 'lti';
     // Get video gallery type id.
-    $type = $DB->get_record_select('lti_types', "baseurl LIKE '%/hosted/index/course-gallery'");
-
+    $type = $this->getVideoGalleryLTIType();
+    if (!$type) {
+      return false;
+    }
     $lti = [
       'name' => $instance->name,
       'intro' => $instance->intro,

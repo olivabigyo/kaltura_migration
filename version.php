@@ -28,8 +28,9 @@ $plugin->version   = 2022062000; // The current plugin version (Date: YYYYMMDDXX
 $plugin->requires  = 2020060900; // Requires this Moodle version
 $plugin->component = 'tool_kaltura_migration'; // Full name of the plugin (used for diagnostics)
 
-$plugin->maturity  = MATURITY_ALPHA; // this version's maturity level
+$plugin->maturity  = MATURITY_RC; // this version's maturity level
+$plugin->release   = 'v0.1';
 
 $plugin->dependencies = array(
-    'local_kaltura' => 2020121539
+    'ltisource_switch_config' => 2020061500
 );
