@@ -54,24 +54,25 @@ echo $OUTPUT->notification(get_string('excludedtables', 'tool_kaltura_migration'
 echo $OUTPUT->notification(get_string('backupwarning', 'tool_kaltura_migration'), \core\output\notification::NOTIFY_WARNING);
 echo $OUTPUT->box_end();
 
-if ($data) {
+$errors = false;
+if ($data && $data->op) {
+  echo $OUTPUT->box_start();
+  echo $OUTPUT->heading(get_string('results', 'tool_kaltura_migration'), 3);
   if ($data->op == get_string('search', 'tool_kaltura_migration')) {
     $progress = new \core\progress\display_if_slow();
     $migration->execute($progress);
   } else if ($data->op == get_string('deleterecords', 'tool_kaltura_migration')) {
     $migration->deleteResults();
   } else if ($data->op == get_string('testreplacevideos', 'tool_kaltura_migration')) {
-    $migration->replace(true);
+    $errors = $migration->replace(true);
   } else if ($data->op == get_string('replacevideos', 'tool_kaltura_migration')) {
-    $replaced = $migration->replace();
-    echo $OUTPUT->box_start();
-    echo $OUTPUT->notification(get_string('replacednvideos', 'tool_kaltura_migration', $replaced), \core\output\notification::NOTIFY_SUCCESS);
-    echo $OUTPUT->box_end();
+    $errors = $migration->replace();
   } else if ($data->op == get_string('replacemodules', 'tool_kaltura_migration')) {
-    $migration->replaceModules();
+    $errors = $migration->replaceModules();
   } else if ($data->op == get_string('testreplacemodules', 'tool_kaltura_migration')) {
-    $migration->replaceModules(true);
+    $errors = $migration->replaceModules(true);
   }
+  echo $OUTPUT->box_end();
 }
 
 
@@ -79,8 +80,10 @@ if ($data) {
 $form = new tool_kaltura_migration_form(null, [
   'numresults' => $migration->countResults(),
   'numreplaced' => $migration->countReplaced(),
-  'nummodules' => $migration->countModules()]
-);
+  'nummodules' => $migration->countModules(),
+  'numerrors' => is_array($errors) ? count($errors) : 0,
+  'op' => ($data) ? $data->op : false,
+]);
 
 // Display form. It will depend on the current status.
 $form->display();

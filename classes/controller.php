@@ -43,9 +43,13 @@ class tool_kaltura_migration_controller {
    * @param \core\progress\base $progress Progress bar object, not started.
    */
   function execute($progress) {
+
     $this->progress = $progress;
     $this->deleteResults();
     $this->search();
+
+    global $OUTPUT;
+    echo $OUTPUT->notification(get_string('foundnvideos', 'tool_kaltura_migration', $this->countResults()), \core\output\notification::NOTIFY_SUCCESS);
   }
   /**
    * Search for video URLs in the specified table and column.
@@ -237,9 +241,11 @@ class tool_kaltura_migration_controller {
 
   /**
    * Replace switch video embeds by kaltura embeds.
+   * @return true if no errors, array of error strings if errors.
    */
   function replace($test = false) {
     global $DB;
+    $errors = [];
     $records = $DB->get_records('tool_kaltura_migration_urls');
     $api = new tool_kaltura_migration_api();
     echo '<table border="1">';
@@ -254,25 +260,36 @@ class tool_kaltura_migration_controller {
         $url = $record->url;
         $referenceIds = $this->getReferenceIdsFromUrl($url);
         if (!$referenceIds) {
-          echo '<td>Error: could not get refid from url ' . $url . '</td>';
+          $error = 'Error: could not get refid from url ' . $url;
+          $errors[] = $error;
         } else {
           $entry = $api->getMediaByReferenceIds($referenceIds);
           if (!$entry) {
-            echo '<td>Error: could not get Kaltura media with refid ' . implode(',', $referenceIds) . '</td>';
+            $error = 'Error: could not get Kaltura media with refid ' . implode(',', $referenceIds);
+            echo "<td>$error</td>";
+            $errors[] = $error;
           } else if ($this->replaceVideo($table, $column, $id, $url, $entry, $test)) {
             $record->replaced = true;
             $DB->update_record('tool_kaltura_migration_urls', $record);
             $replaced++;
             echo '<td>Video replaced with refid ' . implode(',', $referenceIds) . '</td>';
           } else if (!$test) {
-            echo '<td>Error: Could not replace html content.</td>';
+            $error = 'Error: Could not replace html content.';
+            echo "<td>$error</td>";
+            $errors[] = $error;
           }
         }
         echo '</tr>';
       }
     }
     echo '</table>';
-    return $replaced;
+
+    if (!$test) {
+      global $OUTPUT;
+      echo $OUTPUT->notification(get_string('replacednvideos', 'tool_kaltura_migration', $replaced), \core\output\notification::NOTIFY_SUCCESS);
+    }
+
+    return count($errors) == 0 ? true : $errors;
   }
 
   /**
@@ -384,6 +401,12 @@ EOD;
       echo '</td></tr>' . "\n";
     }
     echo '</table>';
+
+    if (!$testing) {
+      global $OUTPUT;
+      echo $OUTPUT->notification(get_string('replacednmodules', 'tool_kaltura_migration', $replaced), \core\output\notification::NOTIFY_SUCCESS);
+    }
+
     return (count($errors) == 0) ? true : $errors;
   }
 

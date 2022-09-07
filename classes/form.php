@@ -38,6 +38,8 @@ class tool_kaltura_migration_form extends moodleform
         $numresults = $this->_customdata['numresults'];
         $numreplaced = $this->_customdata['numreplaced'];
         $nummodules = $this->_customdata['nummodules'];
+        $numerrors = isset($this->_customdata['numerrors']) ? $this->_customdata['numerrors'] : 0;
+        $op = isset($this->_customdata['op']) ? $this->_customdata['op'] : false;
 
         $hasresults = $numresults > 0;
         $hasreplacements = $numresults > $numreplaced;
@@ -47,28 +49,45 @@ class tool_kaltura_migration_form extends moodleform
         $a->numresults = $numresults;
         $a->numreplaced = $numreplaced;
 
+        $mform->addElement('header', 'migrateembeddingsheader', get_string('migrateembeddings', 'tool_kaltura_migration'));
+        $mform->setExpanded('migrateembeddingsheader');
+
         $message = $hasresults ? get_string('thereareresults', 'tool_kaltura_migration', $a) :
             get_string('clicksearch', 'tool_kaltura_migration');
-
         $mform->addElement('static', 'description', '', $message);
 
         $buttonarray = [];
         if ($hasresults) {
-            //$buttonarray[] = $mform->createElement('submit', 'op', get_string('downloadcsv', 'tool_kaltura_migration'));
             $buttonarray[] = $mform->createElement('submit', 'op', get_string('deleterecords', 'tool_kaltura_migration'));
+        } else {
+            $buttonarray[] = $mform->createElement('submit', 'op', get_string('search', 'tool_kaltura_migration'));
         }
+
         if ($hasreplacements) {
             $buttonarray[] = $mform->createElement('submit', 'op', get_string('testreplacevideos', 'tool_kaltura_migration'));
-            $buttonarray[] = $mform->createElement('submit', 'op', get_string('replacevideos', 'tool_kaltura_migration'));
+            if ($op == get_string('testreplacevideos', 'tool_kaltura_migration')) {
+                $message = $numerrors > 0 ? get_string('thereareerrors', 'tool_kaltura_migration', $numerrors) : get_string('noerrors', 'tool_kaltura_migration');
+                $mform->addElement('static', 'videoerrors', '', $message);
+                $buttonarray[] = $mform->createElement('submit', 'op', get_string('replacevideos', 'tool_kaltura_migration'));
+            }
         }
-        $buttonarray[] = $mform->createElement('submit', 'op', get_string('search', 'tool_kaltura_migration'));
-
-        if ($hasmodules) {
-            $buttonarray[] = $mform->createElement('submit', 'op', get_string('testreplacemodules', 'tool_kaltura_migration'));
-            $buttonarray[] = $mform->createElement('submit', 'op', get_string('replacemodules', 'tool_kaltura_migration'));
-        }
-
         $mform->addGroup($buttonarray, 'buttonar', '', ' ', false);
 
+        $mform->addElement('header', 'migratemodulesheader', get_string('migratemodules', 'tool_kaltura_migration'));
+        $buttonarray = [];
+        $mform->setExpanded('migratemodulesheader');
+        if ($hasmodules) {
+            $mform->addElement('static', 'message', '', get_string('therearemodules', 'tool_kaltura_migration', $nummodules));
+            $buttonarray[] = $mform->createElement('submit', 'op', get_string('testreplacemodules', 'tool_kaltura_migration'));
+
+            if ($op == get_string('testreplacemodules', 'tool_kaltura_migration')) {
+                $message = $numerrors > 0 ? get_string('thereareerrors', 'tool_kaltura_migration', $numerrors) : get_string('noerrors', 'tool_kaltura_migration');
+                $mform->addElement('static', 'videoerrors', '', $message);
+                $buttonarray[] = $mform->createElement('submit', 'op', get_string('replacemodules', 'tool_kaltura_migration'));
+            }
+            $mform->addGroup($buttonarray, 'buttonar2', '', ' ', false);
+        } else {
+            $mform->addElement('static', 'message', '', get_string('therearenomodules', 'tool_kaltura_migration'));
+        }
     }
 }
