@@ -32,5 +32,6 @@ $plugin->maturity  = MATURITY_RC; // this version's maturity level
 $plugin->release   = 'v0.1';
 
 $plugin->dependencies = array(
+    'local_kaltura' => 2020121539,
     'ltisource_switch_config' => 2020061500
 );

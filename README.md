@@ -2,9 +2,9 @@
 Moodle admin tool featuring Kaltura migration for SWITCH users
 
 ## Requisites
- - *Switch Config* LTI source plugin installed and configured.
- - *Video Gallery* External tool properly configured before running the migration.
- - *Kaltura* plugin is not required, but this plugin will use its configuration if it's installed.
+ - *Kaltura* Moodle plugin (https://github.com/kaltura/moodle_plugin or https://github.com/estevebadia/kaltura_moodle_plugin).
+ - *Switch Config* LTI source plugin installed and configured (https://github.com/estevebadia/switch_config).
+ - *Video Gallery* External tool properly configured.
 ## Install
 Copy the source code to the `/admin/tool` folder:
 ```bash
