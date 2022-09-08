@@ -479,7 +479,7 @@ EOD;
     $modinfo = create_module($modinfo);
     // Put module in the right spot within the section.
     $section = $DB->get_record('course_sections', ['course' => $modinfo->course, 'section' => $modinfo->section]);
-    $newsequence = $this->moveInSequence($section->sequence, $cm->id, $modinfo->coursemodule);
+    $newsequence = $this->moveInSequence($section->sequence, $modinfo->coursemodule, $cm->id);
     $DB->set_field("course_sections", "sequence", $newsequence, array("id" => $section->id));
     return $modinfo;
   }
