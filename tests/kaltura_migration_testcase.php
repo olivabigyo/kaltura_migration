@@ -28,11 +28,23 @@
 class kaltura_migration_testcase extends advanced_testcase {
    public function test_extract_urls() {
       $text = 'XXX aaa <a href="https://tube.switch.ch/video/1234567890?embed=true">video link</a>' . "\n"
-         . 'http://cast.switch.ch/casts/123 http://cast.switch.com/casts/123';
+         . 'http://cast.switch.ch/casts/123 http://cast.switch.com/casts/123' ."\n"
+         . '<iframe src="https://download.cast.switch.ch/ethz-ch/switchcast-player/a6d933d9-8513-4a18-8eea-d36ebb2f1357/463fd0cc-0b82-4aba-9d5c-840667b4e7fd/Learning_goals.mp4"></iframe>';
       $migration = new testable_kaltura_migration_controller();
       $urls = $migration->extractUrls($text);
-      $this->assertEquals(count($urls), 2);
+      $this->assertEquals(count($urls), 3);
       $this->assertEquals($urls[0], 'https://tube.switch.ch/video/1234567890?embed=true');
       $this->assertEquals($urls[1], 'http://cast.switch.ch/casts/123');
+      $this->assertEquals($urls[2], 'https://download.cast.switch.ch/ethz-ch/switchcast-player/a6d933d9-8513-4a18-8eea-d36ebb2f1357/463fd0cc-0b82-4aba-9d5c-840667b4e7fd/Learning_goals.mp4');
+   }
+   public function test_extract_refids() {
+      $urls = ['https://tube.switch.ch/video/KIYKnxzVr3?embed=true', 'https://cast.switch.ch/casts/gjuqKSPL24', 'https://download.cast.switch.ch/ethz-ch/switchcast-player/a6d933d9-8513-4a18-8eea-d36ebb2f1357/463fd0cc-0b82-4aba-9d5c-840667b4e7fd/Learning_goals.mp4'];
+      $expected = ['KIYKnxzVr3', 'gjuqKSPL24', 'a6d933d9-8513-4a18-8eea-d36ebb2f1357,463fd0cc-0b82-4aba-9d5c-840667b4e7fd'];
+      $migration = new testable_kaltura_migration_controller();
+      foreach($urls as $i => $url) {
+         $refids = $migration->getReferenceIdsFromUrl($url);
+         $refids = is_array($refids) ? implode(',', $refids) : false;
+         $this->assertEquals($refids, $expected[$i]);
+      }
    }
 }

@@ -274,11 +274,11 @@ class tool_kaltura_migration_controller {
   /**
    * @return array
   */
-  function getReferenceIdsFromUrl($url) {
+  protected function getReferenceIdsFromUrl($url) {
     if (preg_match('#https?://[a-zA-z0-9\._\-/]*?/([a-f0-9\-]{36})/([a-f0-9\-]{36})/.*#', $url, $matches)) {
       return [$matches[1], $matches[2]];
     }
-    if (preg_match('#https?://[a-zA-z0-9\._\-/]*/([a-zA-Z0-9]{8,10})$#', $url, $matches)) {
+    if (preg_match('#https?://[a-zA-z0-9\._\-/]*/([a-zA-Z0-9]{8,10})(\?|\#|$)#', $url, $matches)) {
       return [$matches[1]];
     }
     return false;
@@ -289,7 +289,7 @@ class tool_kaltura_migration_controller {
    * @param string|int $course id, if nonnegative, content not in any course if -1 and all courses if -2.
    * @return true if no errors, array of error strings if errors.
    */
-  function replace($course = -2, $test = false) {
+  public function replace($course = -2, $test = false) {
     global $DB;
     $errors = [];
     $conditions = [];
