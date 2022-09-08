@@ -479,9 +479,21 @@ EOD;
     $modinfo = create_module($modinfo);
     // Put module in the right spot within the section.
     $section = $DB->get_record('course_sections', ['course' => $modinfo->course, 'section' => $modinfo->section]);
-    $newsequence = preg_replace("/(^|,)({$cm->id})(,|$)/", '${1}' . $modinfo->coursemodule . ',${2}${3}', $section->sequence);
+    $newsequence = $this->moveInSequence($section->sequence, $cm->id, $modinfo->coursemodule);
     $DB->set_field("course_sections", "sequence", $newsequence, array("id" => $section->id));
     return $modinfo;
+  }
+
+  public function moveInSequence($sequence, $id, $before) {
+    $elems = explode(',', $sequence);
+    if (($pos = array_search($id, $elems))!==false) {
+      array_splice($elems, $pos, 1);
+    }
+    if (($pos = array_search($before, $elems))!==false) {
+      array_splice($elems, $pos, 0, [$id]);
+    }
+    $newsequence = implode(',', $elems);
+    return $newsequence;
   }
 
   /**
