@@ -121,36 +121,53 @@ class tool_kaltura_migration_controller {
     if (!isset($columns['id'])) {
       return -1;
     }
-    $course = false;
-    if (isset($columns['course'])) {
-      $course = $DB->get_field($table, 'course', ['id' => $id]);
+    try {
+      $course = false;
+      if (isset($columns['course'])) {
+        $course = $DB->get_field($table, 'course', ['id' => $id]);
+      }
+      if ($table == 'question') {
+        if (isset($columns['category'])) {
+          // Moodle 3
+          $course = $DB->get_field_sql(
+            'SELECT c.instanceid FROM {context} c
+            JOIN {question_categories} qc ON qc.contextid = c.id
+            JOIN {question} q ON q.category = qc.id
+            WHERE c.contextlevel = 50 AND q.id = ?',
+            [$id]);
+        } else {
+          // Moodle 4
+          $course = $DB->get_field_sql(
+            'SELECT c.instanceid FROM {context} c
+              JOIN {question_categories} qc ON qc.contextid = c.id
+              JOIN {question_bank_entries} qbe ON qbe.questioncategoryid = qc.id
+              JOIN {question_versions} qv ON qv.questionbankentryid = qbe.id
+              JOIN {question} q ON q.id = qv.questionid
+              WHERE c.contextlevel = 50 AND q.id = ?',
+              [$id]);
+        }
+      }
+      if ($table == 'wiki_pages') {
+        $course = $DB->get_field_sql(
+          'SELECT w.course FROM {wiki} w
+          JOIN {wiki_subwikis} s ON s.wikiid = w.id
+          JOIN {wiki_pages} p ON p.subwikiid = s.id
+          WHERE p.id = ?',
+          [$id]);
+      }
+      if ($table == 'wiki_versions') {
+        $course = $DB->get_field_sql(
+          'SELECT w.course FROM {wiki} w
+          JOIN {wiki_subwikis} s ON s.wikiid = w.id
+          JOIN {wiki_pages} p ON p.subwikiid = s.id
+          JOIN {wiki_versions} v ON v.pageid = p.id
+          WHERE v.id = ?',
+          [$id]);
+      }
+      return ($course === false) ? -1 : $course;
+    } catch (Exception $e) {
+      return -1;
     }
-    if ($table == 'question') {
-      $course = $DB->get_field_sql(
-        'SELECT c.instanceid FROM {context} c
-        JOIN {question_categories} qc ON qc.contextid = c.id
-        JOIN {question} q ON q.category = qc.id
-        WHERE c.contextlevel = 50 AND q.id = ?',
-        [$id]);
-    }
-    if ($table == 'wiki_pages') {
-      $course = $DB->get_field_sql(
-        'SELECT w.course FROM {wiki} w
-        JOIN {wiki_subwikis} s ON s.wikiid = w.id
-        JOIN {wiki_pages} p ON p.subwikiid = s.id
-        WHERE p.id = ?',
-        [$id]);
-    }
-    if ($table == 'wiki_versions') {
-      $course = $DB->get_field_sql(
-        'SELECT w.course FROM {wiki} w
-        JOIN {wiki_subwikis} s ON s.wikiid = w.id
-        JOIN {wiki_pages} p ON p.subwikiid = s.id
-        JOIN {wiki_versions} v ON v.pageid = p.id
-        WHERE v.id = ?',
-        [$id]);
-    }
-    return ($course === false) ? -1 : $course;
   }
   /**
    * Search video URLs in the whole database.
