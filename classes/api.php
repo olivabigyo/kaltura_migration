@@ -16,7 +16,7 @@ class tool_kaltura_migration_api {
     $partner_id = get_config('tool_kaltura_migration', 'partner_id');
     $url = get_config('tool_kaltura_migration', 'api_url');
 
-    $user = $USER->email;
+    $user = isset($USER) && isset($USER->email) ? $USER->email : '';
 
     $config = new KalturaConfiguration();
     $config->serviceUrl = $url;
@@ -74,6 +74,41 @@ class tool_kaltura_migration_api {
     return $this->singleOrFalseResult($result);
   }
 
+   /**
+   * Fetch Kaltura Categories Given its reference id.
+   * @param string $referenceId.
+   * @return array category array.
+   */
+  public function getCategoriesByReferenceId($referenceId) {
+    $filter = new KalturaCategoryFilter();
+    $filter->referenceIdEqual = $referenceId;
+    $pager = null;
+    $result = $this->client->category->listAction($filter, $pager);
+    return $result->objects;
+  }
+
+  /**
+   * Search for a category that shares the parent category with the given sibling
+   * and with given name.
+   *
+   * @param object $siblingCategory The category that shares the parent with the
+   * category to be found.
+   * @param string $name The name of the category to be found.
+   * @return object|bool The found category or false.
+   */
+  public function getCategoryBySiblingAndName($siblingCategory, $name) {
+    $prefix = '';
+    if (($pos = strrpos($siblingCategory->fullName, '>')) !== false) {
+      $prefix = substr($siblingCategory->fullName, 0, $pos) . '>';
+    }
+    $fullName = $prefix . $name;
+    $filter = new KalturaCategoryFilter();
+    $filter->fullNameEqual = $fullName;
+    $pager = null;
+    $result = $this->client->category->listAction($filter, $pager);
+    return $this->singleOrFalseResult($result);
+  }
+
   /**
    * Rename Kaltura category
    * @param stdClass $category The category recird.
@@ -83,8 +118,60 @@ class tool_kaltura_migration_api {
     if ($category->name != $name) {
       $update = new KalturaCategory();
       $update->name = $name;
-      return $this->client->category->update($category->id, $update);
+      try {
+        return $this->client->category->update($category->id, $update);
+      } catch (Exception $e) {
+        // Prevent pausing migration.
+        echo "Error: " . $e->getMessage();
+        return false;
+      }
+
     }
     return $category;
+  }
+
+  /**
+   * Copy the given category to a new one with given name.
+   * @param object $category the category object to be copied.
+   * @param string $newname the name of the new category
+   * @return object|bool the new category or false.
+   */
+  public function copyCategory($category, $newname) {
+    // Build new category object
+    $fields = ['parentId', 'description', 'tags', 'privacy',
+    'inheritanceType', 'defaultPermissionLevel', 'owner', 'referenceId',
+    'contributionPolicy', 'privacyContext', 'partnerSortValue', 'partnerData',
+    'defaultOrderBy', 'moderation', 'isAggregationCategory', 'aggregationCategories'];
+    $newcategory = new KalturaCategory();
+    $newcategory->name = $newname;
+    foreach($fields as $field) {
+      $newcategory->{$field} = $category->{$field};
+    }
+    // Create new empty category.
+    try {
+      $newcategory = $this->client->category->add($newcategory);
+    } catch (Exception $e) {
+      // Prevent pausing execution if cant create new category.
+      echo 'Error creating catgory: ' . $e->getMessage();
+      return false;
+    }
+
+    $filter = new KalturaCategoryEntryFilter();
+    $filter->categoryIdEqual = $category->id;
+
+    // Add all media from old category to new category.
+    $result = $this->client->categoryEntry->listAction($filter, null);
+    foreach ($result->objects as $object) {
+      $entry = new KalturaCategoryEntry();
+      $entry->categoryId = $newcategory->id;
+      $entry->entryId = $object->entryId;
+      try {
+        $this->client->categoryEntry->add($entry);
+      } catch (Exception $e) {
+        // Don't pause execution.
+        echo "Error adding entry {$entry->entryId} to category {$entry->categoryId}. Should be fixed manually!" . $e->getMessage();
+      }
+    }
+    return $newcategory;
   }
 }

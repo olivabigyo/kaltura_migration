@@ -37,7 +37,12 @@ class tool_kaltura_migration_controller {
   /** @var \core\progress\base Progress bar for the current operation. */
   protected $progress;
   /** @var array video URL subsctrings to search for*/
-  protected array $hosts = ['tube.switch.ch', 'cast.switch.ch', 'download.cast.switch.ch'];
+  protected $hosts = ['tube.switch.ch', 'cast.switch.ch', 'download.cast.switch.ch'];
+
+  /** @var array map of category renames during a testing session. */
+  protected $testing_renames = [];
+  /** @var array of "course-cmid" for new modules to be created during a testing session. */
+  protected $testing_created_modules = [];
 
   /**
    * @param \core\progress\base $progress Progress bar object, not started.
@@ -446,32 +451,30 @@ EOD;
       echo "<tr><td>$i</td><td>";
       $i++;
       $instance = $this->getSwitchCastInstance($cm);
-      // Fetch category.
-      $category = $api->getCategoryByReferenceId($instance->ext_id);
-      if ($category !== false) {
-        // Create a new Media Gallery LTI cm replacing switchcast.
-        $modinfo = $this->getLTIModuleInfoFromSwitchCast($cm, $instance);
-        if (!$modinfo) {
-          echo "<p>Error: Create first the Media Gallery LTI type.</p>";
-        } else if ($testing) {
-          echo "<p>Found kaltura category for Switchcast module id {$cm->id} name {$instance->name}.</p>";
-          echo '<p>Ready to migrate!</p>';
+      $modinfo = $this->getLTIModuleInfoFromSwitchCast($cm, $instance);
+      if (!$modinfo) {
+          $error = $this->swithCastModuleErrorMessage($cm, "Create first the Video Gallery LTI type. Can't migrate!");
+          echo $error;
+          $errors[] = $error;
+      } else {
+        $category = $this->getModuleCategory($api, $cm, $instance, $testing);
+        if ($category === false) {
+          // Category not found. Report error!
+          $error = $this->swithCastModuleErrorMessage($cm, "Could not associate kaltura category. Can't migrate!");
+          echo $error;
+          $errors[] = $error;
         } else {
-          $modinfo = $this->createModule($cm, $modinfo);
-          // Change the name of the category so that the Media Gallery will access this category.
-          $category_name = $cm->course . '-' . $modinfo->coursemodule;
-          $api->setCategoryName($category, $category_name);
-          // Remove the switchcast cm.
-          course_delete_module($cm->id);
-          $replaced++;
-          echo "<p>Successfully migrated <em>{$instance->name}</em>!</p>";
+          if ($testing) {
+            echo '<p>Ready to migrate!</p>';
+            $this->testing_created_modules[] = $category->name;
+          } else {
+            $this->createModule($cm, $modinfo);
+            // Remove the switchcast cm.
+            course_delete_module($cm->id);
+            $replaced++;
+            echo "<p>Successfully migrated <em>{$instance->name}</em>!</p>";
+          }
         }
-      }
-      else {
-        // Category not found. Report error!
-        $error = $this->swithCastModuleErrorMessage($cm, "Category not found or duplicate in kaltura server with reference id {$instance->ext_id}.");
-        echo $error;
-        $errors[] = $error;
       }
       echo '</td></tr>' . "\n";
     }
@@ -483,6 +486,136 @@ EOD;
     }
 
     return (count($errors) == 0) ? true : $errors;
+  }
+
+  /**
+   *  This (most probably) the new id of the module that we are about to create.
+   */
+  protected function guessNextModuleId($testing = false) {
+    global $DB;
+    $newid = $DB->get_field_sql("SELECT MAX(id) FROM {course_modules}") + 1;
+    if ($testing) {
+      $newid += count($this->testing_created_modules);
+    }
+    return $newid;
+  }
+
+  /**
+   * Retrieves or creates a category for the provided swtchcast module. If no
+   * category is found for this module, returns false.
+   */
+  protected function getModuleCategory($api, $cm, $instance, $testing = false) {
+    global $DB;
+
+    $newid = $this->guessNextModuleId($testing);
+
+    $category_name = $cm->course . '-' . $newid;
+    $categories = $api->getCategoriesByReferenceId($instance->ext_id);
+    if (count($categories) == 0) {
+      echo "<p>Error: There is no kaltura category with reference id {$instance->ext_id}.</p>";
+      return false;
+    }
+    if ($testing) {
+      echo "<p>Found kaltura category with reference id {$instance->ext_id} for Switchcast module id {$cm->id} name '{$instance->name}'.</p>";
+      // simulate prior renamings
+      foreach ($categories as $category) {
+        if (isset($this->testing_renames[$category->id])) {
+          $category->name = $this->testing_renames[$category->id];
+        }
+      }
+    }
+    // If there's a category with the right reference id, we'll provide a result
+    // either (a) directly, (b) by renaming or (c) by copying this category.
+
+    foreach ($categories as $category) {
+      if ($category->name == $category_name) {
+        // (a) we found the matching category for this module!
+        return $category;
+      }
+    }
+    // At this point there is no category with the right reference id and name,
+    // so we'll need to rename an existing category or create a new category with
+    // the proper name. However that may clash with an existing category (with
+    // different refid). We check this possibility here:
+    $existing = $api->getCategoryBySiblingAndName($category, $category_name);
+    if ($existing) {
+      echo "<p>Error: there already exists another category with name {$category_name} but with different reference id {$existing->referenceId} so it's not possible to rename the related category found. That requires manual fix: either delete, rename or change the reference Id of this category to {$instance->ext_id}.<p>";
+      return false;
+    }
+
+    // Search for a free category.
+    $category = false;
+    $ltimodule = $DB->get_field('modules', 'id', ['name'=>'lti']);
+    foreach ($categories as $candidate) {
+      if (preg_match('/(\d+)\-(\d+)/', $candidate->name, $matches)) {
+        $courseid = intval($matches[1]);
+        $cmid = intval($matches[2]);
+        if (!$DB->count_records('course_modules', ['id' => intval($cmid), 'course' => intval($courseid), 'module' => $ltimodule])) {
+          if ($testing) {
+            // Take in count not created modules when testing!
+            if (in_array($candidate->name, $this->testing_created_modules)) {
+              continue;
+            }
+          }
+          // There not exists any module with the id based on the category name.
+          $category = $candidate;
+        }
+      } else {
+        $category = $candidate;
+      }
+    }
+    if ($category) {
+      // (b) We have a category for our module, but we need to rename it!
+      if ($testing) {
+        echo "<p>Warning: Kaltura category {$category->id} will be renamed from '{$category->name}' to '$category_name'</p>";
+        $this->testing_renames[$category->id] = $category_name;
+        $category->name = $category_name;
+      } else {
+        $old_name = $category->name;
+        $category = $api->setCategoryName($category, $category_name);
+        if ($category === false) {
+          $error = $this->swithCastModuleErrorMessage($cm, "Error renaming category with refid {$instance->ext_id}");
+          echo $error;
+          return false;
+        } else {
+          echo "<p>Renamed category {$category->id} from '{$old_name}' to '$category_name'<p>";
+        }
+      }
+    } else {
+      // (c) We need to create a new category.
+      $model = array_shift($categories);
+      if ($testing) {
+        echo "<p>Warning: There is another SwitchCast module pointing to the same category. " .
+             "A new category will be created for this module and all media in this module will be added to the new category.</p>";
+        $category = $model;
+      } else {
+        $category = $api->copyCategory($model, $category_name);
+        if ($category === false) {
+          $error = $this->swithCastModuleErrorMessage($cm, "Error copying category with refid {$instance->ext_id}");
+          echo $error;
+          return false;
+        } else {
+          echo "<p>Created new kaltura category {$category->id} name '{$category->name}'</p>";
+        }
+      }
+    }
+    return $category;
+  }
+
+  /**
+   * @param object $instance The instance to test.
+   * @param object $instances Instances array given by getSwitchCastInstances function.
+   * @return true if given instance is not the first one with that reference id.
+   *
+  */
+  protected function checkRepeatedReferenceId($instance, $allinstances) {
+    foreach ($allinstances as $id => $item) {
+      if ($item->ext_id == $instance->ext_id) {
+        return $id < $instance->id;
+      }
+    }
+    // Function always returns before loop ends.
+    return false;
   }
 
   /**
@@ -528,7 +661,18 @@ EOD;
     }
     return $DB->get_records_sql($sql, $params);
   }
-
+  protected function getSwitchCastInstances($cms) {
+    if (count($cms) == 0) {
+      return [];
+    }
+    global $DB;
+    $ids = array_map(function($cm) {
+      return $cm->instance;
+    }, $cms);
+    list($in, $params) = $DB->get_in_or_equal($ids);
+    $instances = $DB->get_records_select('opencast', 'id ' . $in, $params, 'id');
+    return $instances;
+  }
   /**
    * @param object $cm course_module record.
    * @return object the opencast instance.
@@ -545,7 +689,7 @@ EOD;
    * @param string $msg error detail message
   */
   protected function swithCastModuleErrorMessage($cm, $msg) {
-    return "Error in opencast course module id {$cm->id} from course id {$cm->course}. " . $msg;
+    return '<p class="alert-danger">' . "Error in opencast course module id {$cm->id} from course id {$cm->course}. " . $msg . '</p>';
   }
 
   public function getVideoGalleryLTIType() {
