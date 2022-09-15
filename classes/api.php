@@ -102,6 +102,14 @@ class tool_kaltura_migration_api {
       $prefix = substr($siblingCategory->fullName, 0, $pos) . '>';
     }
     $fullName = $prefix . $name;
+    return $this->getCategoryByFullName($fullName);
+  }
+
+  /**
+   * Fetches a category given its full name.
+   * Eg: "Moodle>site>channels>2-50"
+   */
+  public function getCategoryByFullName($fullName) {
     $filter = new KalturaCategoryFilter();
     $filter->fullNameEqual = $fullName;
     $pager = null;
@@ -130,6 +138,27 @@ class tool_kaltura_migration_api {
     return $category;
   }
 
+  public function createCategory($category) {
+    // Build new category object
+    $fields = ['name','parentId', 'description', 'tags', 'privacy',
+    'inheritanceType', 'defaultPermissionLevel', 'owner', 'referenceId',
+    'contributionPolicy', 'privacyContext', 'partnerSortValue', 'partnerData',
+    'defaultOrderBy', 'moderation', 'isAggregationCategory', 'aggregationCategories'];
+    $newcategory = new KalturaCategory();
+    foreach($fields as $field) {
+      $newcategory->{$field} = $category->{$field};
+    }
+    // Create new empty category.
+    try {
+      $newcategory = $this->client->category->add($newcategory);
+      return $newcategory;
+    } catch (Exception $e) {
+      // Prevent pausing execution if cant create new category.
+      echo 'Error creating catgory: ' . $e->getMessage();
+      return false;
+    }
+  }
+
   /**
    * Copy the given category to a new one with given name.
    * @param object $category the category object to be copied.
@@ -137,41 +166,46 @@ class tool_kaltura_migration_api {
    * @return object|bool the new category or false.
    */
   public function copyCategory($category, $newname) {
-    // Build new category object
-    $fields = ['parentId', 'description', 'tags', 'privacy',
-    'inheritanceType', 'defaultPermissionLevel', 'owner', 'referenceId',
-    'contributionPolicy', 'privacyContext', 'partnerSortValue', 'partnerData',
-    'defaultOrderBy', 'moderation', 'isAggregationCategory', 'aggregationCategories'];
-    $newcategory = new KalturaCategory();
-    $newcategory->name = $newname;
-    foreach($fields as $field) {
-      $newcategory->{$field} = $category->{$field};
-    }
-    // Create new empty category.
-    try {
-      $newcategory = $this->client->category->add($newcategory);
-    } catch (Exception $e) {
-      // Prevent pausing execution if cant create new category.
-      echo 'Error creating catgory: ' . $e->getMessage();
+    $model = clone($category);
+    $model->name = $newname;
+
+    if (($newcategory = $this->createCategory($model) === false)) {
       return false;
     }
 
+    $this->copyMedia($category, $newcategory);
+    return $newcategory;
+  }
+
+  public function copyMedia($fromcategory, $tocategory) {
     $filter = new KalturaCategoryEntryFilter();
-    $filter->categoryIdEqual = $category->id;
+    $filter->categoryIdEqual = $fromcategory->id;
 
     // Add all media from old category to new category.
     $result = $this->client->categoryEntry->listAction($filter, null);
-    foreach ($result->objects as $object) {
-      $entry = new KalturaCategoryEntry();
-      $entry->categoryId = $newcategory->id;
-      $entry->entryId = $object->entryId;
-      try {
-        $this->client->categoryEntry->add($entry);
-      } catch (Exception $e) {
-        // Don't pause execution.
-        echo "Error adding entry {$entry->entryId} to category {$entry->categoryId}. Should be fixed manually!" . $e->getMessage();
+    $entryids = array_map(function($object) { return $object->entryId; }, $result->objects);
+    // Check which entries are already in target category.
+    $filter->categoryIdEqual = $tocategory->id;
+    $filter->entryIdIn = implode(',', $entryids);
+    $existing = $this->client->categoryEntry->listAction($filter, null);
+    $existingids = array_map(function($object) { return $object->entryId; }, $existing->objects);
+
+    foreach ($entryids as $id) {
+      if (in_array($id, $existingids)) {
+        echo "Entry id {$id} already in category, no need to add.\n";
+      } else {
+        $entry = new KalturaCategoryEntry();
+        $entry->categoryId = $tocategory->id;
+        $entry->entryId = $id;
+        try {
+          $this->client->categoryEntry->add($entry);
+          echo "Added entry id {$id} to category {$tocategory->id}.\n";
+        } catch (Exception $e) {
+          // Don't pause execution.
+          echo "Error adding entry {$id} to category {$tocategory->id}. Should be fixed manually!" . $e->getMessage();
+        }
       }
+
     }
-    return $newcategory;
   }
 }

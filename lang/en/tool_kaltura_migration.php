@@ -55,3 +55,6 @@ $string['partner_id_description'] = 'Kaltura API partner number, ex: 105';
 $string['api_url'] = 'Kaltura API URL';
 $string['tool_kaltura_migration_settings'] = 'Kaltura Migration Settings';
 $string['nomediagallery'] = 'You need to create the LTI type Media Gallery before performing the migration';
+$string['modulestolti'] = 'Replace each SwitchCast module by a Media Gallery external tool';
+$string['modulestocoursemedia'] = 'Move all content from SwitchCast modules to the single course Media Gallery';
+

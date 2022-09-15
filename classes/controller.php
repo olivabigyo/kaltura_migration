@@ -431,6 +431,71 @@ EOD;
   }
 
   /**
+   * $course >= 0.
+   */
+  protected function replaceModulesToCourseMediaSingle($api, $course, $testing = false) {
+    global $DB;
+    $cms = $this->getAllSwitchCastModules($course);
+
+    $category = $this->getCourseCategory($api, $course, $testing);
+    if ($category === false) {
+      $error = $this->swithCastModuleErrorMessage($cm, "Error creating course category. Can't migrate.");
+      echo $error;
+    }
+    echo '<table border="1">';
+    $i = 1;
+    $replaced = 0;
+    foreach ($cms as $cm) {
+      echo "<tr><td>$i</td><td>";
+      $instance = $this->getSwitchCastInstance($cm);
+      $cmcategories = $api->getCategoriesByReferenceId($instance->ext_id);
+      if (count($cmcategories) == 0) {
+        $error = $this->swithCastModuleErrorMessage($cm, "Kaltura category with reference id {$instance->ext_id} not found.");
+        echo $error;
+      } else {
+        $cmcategory = $cmcategories[0];
+        if (count($cmcategories) > 1) {
+          echo "<p>Warning: more than one category found with reference id {$instance->ext_id}. Taking the one with id {$cmcategory->id}.</p>";
+        }
+        if ($testing) {
+          echo "<p>Module '{$instance->name}' ready to migrate!</p>";
+        } else {
+          // copy all media from module category to course category.
+          $api->copyMedia($cmcategory, $category);
+          // Remove the switchcast cm.
+            course_delete_module($cm->id);
+          echo "<p>Media successfully migrated from module name '{$instance->name}' to Course Media Gallery.</p>";
+          $replaced++;
+        }
+      }
+      echo '</td></tr>' . "\n";
+      $i++;
+    }
+    echo '</table>';
+    if (!$testing) {
+      global $OUTPUT;
+      echo $OUTPUT->notification(get_string('replacednmodules', 'tool_kaltura_migration', $replaced), \core\output\notification::NOTIFY_SUCCESS);
+    }
+  }
+  /**
+   * Delete all switchcast activities and send all media from Switchcast modules
+   * to the Course Media Gallery category.
+   * */
+  function replaceModulesToCourseMedia($course = -1, $testing = false) {
+    global $DB;
+    $api = new tool_kaltura_migration_api();
+    if ($course >= 0) {
+      $this->replaceModulesToCourseMediaSingle($api, $course, $testing);
+    } else {
+      // Courses with opencast modules.
+      $course_ids = $DB->get_fieldset_sql('SELECT DISTINCT course FROM {opencast}');
+      foreach ($course_ids as $course_id) {
+        $this->replaceModulesToCourseMediaSingle($api, $course_id, $testing);
+      }
+    }
+  }
+
+  /**
    * Replace every course module of type opencast by a LTI external tool of type
    * "Media Gallery".
    * @param int $course The course to migrate, negative for all courses.
@@ -438,7 +503,7 @@ EOD;
    *
    * @return mixed boolean TRUE if no errors, an array of error messages if any error.
    */
-  function replaceModules($course = -2, $testing = false) {
+  function replaceModulesToLTI($course = -2, $testing = false) {
     // Get all switchcast modules.
     $cms = $this->getAllSwitchCastModules($course);
     $errors = [];
@@ -489,6 +554,18 @@ EOD;
   }
 
   /**
+   * Migrate switchcast modules either to the kaltura course media gallery or to
+   * external tool activities.
+  */
+  function replaceModules($course = -2, $modulestocoursemedia = false, $testing = false) {
+    if ($modulestocoursemedia) {
+      return $this->replaceModulesToCourseMedia($course, $testing);
+    } else {
+      return $this->replaceModulesToLTI($course, $testing);
+    }
+  }
+
+  /**
    *  This (most probably) the new id of the module that we are about to create.
    */
   protected function guessNextModuleId($testing = false) {
@@ -498,6 +575,66 @@ EOD;
       $newid += count($this->testing_created_modules);
     }
     return $newid;
+  }
+  /** @return string "Moodle>site>channels" */
+  protected function getParentCategoryFullName() {
+    return 'Moodle>site>channels';
+  }
+
+  /**
+   * Creates (or tests creation) the Kaltura category for the given course.
+   */
+  protected function createCourseCategory($api, $courseid, $testing = false) {
+    $fullname = $this->getParentCategoryFullName();
+    $parent = $api->getCategoryByFullName($fullname);
+    if ($parent === false) {
+      echo "Error: Could not find parent category {$fullname}.";
+      return false;
+    }
+    $category = (object)[
+      'name' => $courseid,
+      'parentId' => $parent->id,
+      'description' => null,
+      'tags' => null,
+      'privacy' => 1,
+      'inheritanceType' => 2,
+      'defaultPermissionLevel' => 3,
+      'owner' => '',
+      'referenceId' => '',
+      'contributionPolicy' => 1,
+      'privacyContext' => '',
+      'partnerSortValue' => 0,
+      'partnerData' => null,
+      'defaultOrderBy' => null,
+      'moderation' => true,
+      'isAggregationCategory' => false,
+      'aggregationCategories' => ''
+    ];
+    if ($testing) {
+      return $category;
+    } else {
+      $category = $api->createCategory($category);
+      echo "Created course category id {$category->id} name {$category->name}.";
+      return $category;
+    }
+  }
+  /**
+   * Fetches or creates the Kaltura category for the given course.
+   */
+  protected function getCourseCategory($api, $courseid, $testing = false) {
+    $fullname = $this->getParentCategoryFullName() . '>' . $courseid;
+    $category = $api->getCategoryByFullName($fullname);
+    if ($category == false) {
+      if ($testing) {
+        echo "Warning: Kaltura category not found for course {$courseid}. The
+        migration process will create a new one. You can also manually visit the
+        course media gallery in order to create the categories in Kaltura.";
+      }
+      // No Media gallery exists for this course. We'll create a new one.
+      // Note that this function still has the testing parameter.
+      $category = $this->createCourseCategory($api, $courseid, $testing);
+    }
+    return $category;
   }
 
   /**
