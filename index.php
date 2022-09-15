@@ -63,6 +63,8 @@ if ($optestreplacevideos || $opreplacevideos) {
   $course = $coursesreplacemodules;
 }
 
+$modulestocoursemedia = optional_param('modulestocoursemedia', 0, PARAM_BOOL);
+
 echo $OUTPUT->header();
 
 echo $OUTPUT->heading(get_string('pageheader', 'tool_kaltura_migration'));
@@ -89,9 +91,9 @@ if ($op) {
   } else if ($opreplacevideos) {
     $errors = $migration->replace($course);
   } else if ($optestreplacemodules) {
-    $errors = $migration->replaceModules($course, true);
+    $errors = $migration->replaceModules($course, $modulestocoursemedia, true);
   } else if ($opreplacemodules) {
-    $errors = $migration->replaceModules($course);
+    $errors = $migration->replaceModules($course, $modulestocoursemedia);
   }
   echo $OUTPUT->box_end();
 }
@@ -104,7 +106,8 @@ $form = new tool_kaltura_migration_form(null, [
   'nummodules' => $migration->countModules(),
   'numerrors' => is_array($errors) ? count($errors) : 0,
   'op' => $op,
-  'course' => $course
+  'course' => $course,
+  'modulestocoursemedia' => $modulestocoursemedia
 ]);
 
 // Display form. It will depend on the current status.

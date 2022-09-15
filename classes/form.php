@@ -38,9 +38,10 @@ class tool_kaltura_migration_form extends moodleform
         $numresults = $this->_customdata['numresults'];
         $numreplaced = $this->_customdata['numreplaced'];
         $nummodules = $this->_customdata['nummodules'];
-        $numerrors = isset($this->_customdata['numerrors']) ? $this->_customdata['numerrors'] : 0;
-        $op = isset($this->_customdata['op']) ? $this->_customdata['op'] : false;
-        $course = isset($this->_customdata['course']) ? $this->_customdata['course'] : false;
+        $numerrors = $this->_customdata['numerrors'];
+        $op = $this->_customdata['op'];
+        $course = $this->_customdata['course'];
+        $modulestocoursemedia = $this->_customdata['modulestocoursemedia'];
 
         $hasresults = $numresults > 0;
         $hasreplacements = $numresults > $numreplaced;
@@ -86,12 +87,19 @@ class tool_kaltura_migration_form extends moodleform
             $courses = $this->getReplaceModulesCourses();
             $mform->addElement('select', 'coursesreplacemodules', get_string('course'), $courses);
 
+            $mform->addElement('radio', 'modulestocoursemedia', '', get_string('modulestolti', 'tool_kaltura_migration'), 0);
+            $mform->addElement('radio', 'modulestocoursemedia', '', get_string('modulestocoursemedia', 'tool_kaltura_migration'), 1);
+            $mform->setDefault('modulestocoursemedia', 0);
+
             $buttonarray[] = $mform->createElement('submit', 'optestreplacemodules', get_string('testreplacemodules', 'tool_kaltura_migration'));
             if ($op == 'optestreplacemodules') {
                 $message = $numerrors > 0 ? get_string('thereareerrors', 'tool_kaltura_migration', $numerrors) : get_string('noerrors', 'tool_kaltura_migration');
                 $mform->addElement('static', 'videoerrors', '', $message);
                 $buttonarray[] = $mform->createElement('submit', 'opreplacemodules', get_string('replacemodules', 'tool_kaltura_migration'));
+                // disable replace button on changing course.
                 $mform->disabledIf('opreplacemodules', 'coursesreplacemodules', 'neq', $course);
+                // disable replace button on changing radio.
+                $mform->disabledIf('opreplacemodules', 'modulestocoursemedia', 'neq', $modulestocoursemedia);
             }
             $mform->addGroup($buttonarray, 'buttonar2', '', ' ', false);
         } else {
