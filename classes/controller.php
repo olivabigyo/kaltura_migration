@@ -39,8 +39,8 @@ class tool_kaltura_migration_controller {
   /** @var array video URL subsctrings to search for*/
   protected $hosts = ['tube.switch.ch', 'cast.switch.ch', 'download.cast.switch.ch'];
 
-  /** @var array map of category renames during a testing session. */
-  protected $testing_renames = [];
+  /** @var array map of category updates during a testing session. */
+  protected $testing_updates = [];
   /** @var array of "course-cmid" for new modules to be created during a testing session. */
   protected $testing_created_modules = [];
 
@@ -576,9 +576,23 @@ EOD;
     }
     return $newid;
   }
+
   /** @return string "Moodle>site>channels" */
   protected function getParentCategoryFullName() {
     return 'Moodle>site>channels';
+  }
+
+  /**
+   * Fetches the category identified by fullname getParentCategoryFullName. This
+   * function caches the result between calls on same request.
+   */
+  protected function getParentCategory($api) {
+    static $parent = null; // Cache.
+    if ($parent == null) {
+      $fullname = $this->getParentCategoryFullName();
+      $parent = $api->getCategoryByFullName($fullname);
+    }
+    return $parent;
   }
 
   /**
@@ -586,7 +600,7 @@ EOD;
    */
   protected function createCourseCategory($api, $courseid, $testing = false) {
     $fullname = $this->getParentCategoryFullName();
-    $parent = $api->getCategoryByFullName($fullname);
+    $parent = $this->getParentCategory($api);
     if ($parent === false) {
       echo "Error: Could not find parent category {$fullname}.";
       return false;
@@ -638,49 +652,12 @@ EOD;
   }
 
   /**
-   * Retrieves or creates a category for the provided swtchcast module. If no
-   * category is found for this module, returns false.
+   * From the given array of categories, pick one such that the name of the
+   * category is NOT the string "course-cmid" for any LTI module.
    */
-  protected function getModuleCategory($api, $cm, $instance, $testing = false) {
+  protected function getFreeCategory($categories, $testing) {
     global $DB;
-
-    $newid = $this->guessNextModuleId($testing);
-
-    $category_name = $cm->course . '-' . $newid;
-    $categories = $api->getCategoriesByReferenceId($instance->ext_id);
-    if (count($categories) == 0) {
-      echo "<p>Error: There is no kaltura category with reference id {$instance->ext_id}.</p>";
-      return false;
-    }
-    if ($testing) {
-      echo "<p>Found kaltura category with reference id {$instance->ext_id} for Switchcast module id {$cm->id} name '{$instance->name}'.</p>";
-      // simulate prior renamings
-      foreach ($categories as $category) {
-        if (isset($this->testing_renames[$category->id])) {
-          $category->name = $this->testing_renames[$category->id];
-        }
-      }
-    }
-    // If there's a category with the right reference id, we'll provide a result
-    // either (a) directly, (b) by renaming or (c) by copying this category.
-
-    foreach ($categories as $category) {
-      if ($category->name == $category_name) {
-        // (a) we found the matching category for this module!
-        return $category;
-      }
-    }
-    // At this point there is no category with the right reference id and name,
-    // so we'll need to rename an existing category or create a new category with
-    // the proper name. However that may clash with an existing category (with
-    // different refid). We check this possibility here:
-    $existing = $api->getCategoryBySiblingAndName($category, $category_name);
-    if ($existing) {
-      echo "<p>Error: there already exists another category with name {$category_name} but with different reference id {$existing->referenceId} so it's not possible to rename the related category found. That requires manual fix: either delete, rename or change the reference Id of this category to {$instance->ext_id}.<p>";
-      return false;
-    }
-
-    // Search for a free category.
+        // Search for a free category.
     $category = false;
     $ltimodule = $DB->get_field('modules', 'id', ['name'=>'lti']);
     foreach ($categories as $candidate) {
@@ -701,35 +678,115 @@ EOD;
         $category = $candidate;
       }
     }
+    return $category;
+  }
+
+  /**
+   * Retrieves or creates a category for the provided swtchcast module. If no
+   * category is found for this module, returns false.
+   */
+  protected function getModuleCategory($api, $cm, $instance, $testing = false) {
+    global $DB;
+
+    $categories = $api->getCategoriesByReferenceId($instance->ext_id);
+    if (count($categories) == 0) {
+      echo "<p>Error: There is no kaltura category with reference id {$instance->ext_id}.</p>";
+      return false;
+    }
+    if ($testing) {
+      echo "<p>Found kaltura category with reference id {$instance->ext_id} for Switchcast module id {$cm->id} name '{$instance->name}'.</p>";
+      // Simulate previous updates.
+      foreach ($categories as $index => $category) {
+        if (isset($this->testing_updates[$category->id])) {
+          $categories[$index] = $this->testing_updates[$category->id];
+        }
+      }
+    }
+
+    $parent = $this->getParentCategory($api);
+    // Categories with the right parent.
+    $mcategories = array_filter($categories, function($cat) use ($parent) {
+      return $cat->parentId == $parent->id;
+    });
+    // Categories with other (wrong) parents
+    $ocategories = array_filter($categories, function($cat) use ($parent) {
+      return $cat->parentId != $parent->id;
+    });
+
+
+    $newid = $this->guessNextModuleId($testing);
+    $category_name = $cm->course . '-' . $newid;
+    // If there's a category with the right reference id, we'll provide a result
+    // either (a) directly, (b) by renaming or (c) by copying this category.
+
+    foreach ($mcategories as $category) {
+      if ($category->name == $category_name) {
+        // (a) we found the matching category for this module!
+        return $category;
+      }
+    }
+
+    // At this point there is no category with the right reference id and name,
+    // so we'll need to rename an existing category or create a new category with
+    // the proper name. However that may clash with an existing category (with
+    // different refid). We check this possibility here:
+    $existing = $api->getCategoryByParentAndName($parent, $category_name);
+    if ($existing) {
+      echo "<p>Error: there already exists another category with name {$category_name}
+      but with different reference id {$existing->referenceId} so it's not possible to
+      rename the related category found. That requires manual fix: either delete,
+      rename or change the reference Id of this category to {$instance->ext_id}.<p>";
+      return false;
+    }
+
+    // Check if there is an available category with the right parent.
+    $category = $this->getFreeCategory($mcategories, $testing);
+
+    // Otherwise, check if there is a category with the wrong parent. Any category
+    // with wrong parent is automatically free, since LTI modules only search in
+    // cartegories within the right parent.
+    if ($category === false && (count($ocategories) > 0)) {
+      $category = array_shift($ocategories);
+    }
+
     if ($category) {
-      // (b) We have a category for our module, but we need to rename it!
+      // (b) We have a category for our module, but we need to move/rename it.
       if ($testing) {
-        echo "<p>Warning: Kaltura category {$category->id} will be renamed from '{$category->name}' to '$category_name'</p>";
-        $this->testing_renames[$category->id] = $category_name;
+        if ($category->parentId !== $parent->id) {
+          $oldparentname = substr($category->fullName, 0, strrpos($category->fullName, '>'));
+          echo "<p>Warning: Kaltura category {$category->id} will be moved from '{$oldparentname}' to '{$parent->fullName}'</p>";
+        }
+        if ($category->name !== $category_name) {
+          echo "<p>Warning: Kaltura category {$category->id} will be renamed from '{$category->name}' to '$category_name'</p>";
+        }
+        // simulate move in testing execution.
         $category->name = $category_name;
+        $category->parentId = $parent->id;
+        $category->fullName = $parent->fullName . '>' . $category->name;
+        $this->testing_updates[$category->id] = $category;
       } else {
-        $old_name = $category->name;
-        $category = $api->setCategoryName($category, $category_name);
+        $old_name = $category->fullName;
+        $category = $api->moveCategory($category, $parent, $category_name);
         if ($category === false) {
-          $error = $this->swithCastModuleErrorMessage($cm, "Error renaming category with refid {$instance->ext_id}");
-          echo $error;
+          $new_name = $parent->fullName . '>' . $category_name;
+          echo $this->swithCastModuleErrorMessage($cm, "Error moving category id {$category->id} refid {$instance->ext_id} from '{$old_name}' to '{$new_name}'.");
           return false;
         } else {
-          echo "<p>Renamed category {$category->id} from '{$old_name}' to '$category_name'<p>";
+          echo "<p>Moved category {$category->id} from '{$old_name}' to '{$category->fullName}'.<p>";
         }
       }
     } else {
-      // (c) We need to create a new category.
+      // (c) Didn't found any free category for our module. Let's create a new one.
       $model = array_shift($categories);
       if ($testing) {
         echo "<p>Warning: There is another SwitchCast module pointing to the same category. " .
              "A new category will be created for this module and all media in this module will be added to the new category.</p>";
         $category = $model;
       } else {
-        $category = $api->copyCategory($model, $category_name);
+        $category = $api->copyCategory($model, $parent, $category_name);
         if ($category === false) {
-          $error = $this->swithCastModuleErrorMessage($cm, "Error copying category with refid {$instance->ext_id}");
-          echo $error;
+          $fullname = $parent->fullName . '>' . $category_name;
+          echo $this->swithCastModuleErrorMessage($cm, "Error copying category id {$model->id} refid {$instance->ext_id} to {$fullname}");
           return false;
         } else {
           echo "<p>Created new kaltura category {$category->id} name '{$category->name}'</p>";
