@@ -133,6 +133,10 @@ class tool_kaltura_migration_api {
       try {
         return $this->client->category->update($category->id, $update);
       } catch (Exception $e) {
+        // It happens that when moving a category, Kaltura server does this operation
+        // asynchronously (it looks like they have to rebuild some internal index) and
+        // they block further operations on categories until the first operation is
+        // completed. That's why we spend up to 7 seconds to wait for that.
         if ($e->getCode() == 'CATEGORIES_LOCKED') {
           if ($retry < 3) {
             sleep(2^$retry);
