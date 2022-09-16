@@ -88,20 +88,15 @@ class tool_kaltura_migration_api {
   }
 
   /**
-   * Search for a category that shares the parent category with the given sibling
+   * Search for a category that shares the parent category with the given parent
    * and with given name.
    *
-   * @param object $siblingCategory The category that shares the parent with the
-   * category to be found.
+   * @param object $parentCategory The parent category.
    * @param string $name The name of the category to be found.
    * @return object|bool The found category or false.
    */
-  public function getCategoryBySiblingAndName($siblingCategory, $name) {
-    $prefix = '';
-    if (($pos = strrpos($siblingCategory->fullName, '>')) !== false) {
-      $prefix = substr($siblingCategory->fullName, 0, $pos) . '>';
-    }
-    $fullName = $prefix . $name;
+  public function getCategoryByParentAndName($parentCategory, $name) {
+    $fullName = $parentCategory->fullName . '>' . $name;
     return $this->getCategoryByFullName($fullName);
   }
 
@@ -118,22 +113,40 @@ class tool_kaltura_migration_api {
   }
 
   /**
-   * Rename Kaltura category
-   * @param stdClass $category The category recird.
+   * Move (or just rename) Kaltura category
+   * @param stdClass $category The category to be moved/renamed.
+   * @param object $parent The destination parent category
    * @param string $name the new name.
    */
-  public function setCategoryName($category, $name) {
+  public function moveCategory($category, $parent, $name, $retry = 0) {
+    $update = new KalturaCategory();
+    $needupdate = false;
     if ($category->name != $name) {
-      $update = new KalturaCategory();
       $update->name = $name;
+      $needupdate = true;
+    }
+    if ($category->parentId != $parent->id) {
+      $update->parentId = $parent->id;
+      $needupdate = true;
+    }
+    if ($needupdate) {
       try {
         return $this->client->category->update($category->id, $update);
       } catch (Exception $e) {
+        if ($e->getCode() == 'CATEGORIES_LOCKED') {
+          if ($retry < 3) {
+            sleep(2^$retry);
+            $retry++;
+            return $this->moveCategory($category, $parent, $name, $retry);
+          } else {
+            echo "Error: Could not move category {$category->id} from {$category->parentId} to {$parent->id} after 3 tries. Please try again or do the move my other means.";
+            return false;
+          }
+        }
         // Prevent pausing migration.
         echo "Error: " . $e->getMessage();
         return false;
       }
-
     }
     return $category;
   }
@@ -162,12 +175,14 @@ class tool_kaltura_migration_api {
   /**
    * Copy the given category to a new one with given name.
    * @param object $category the category object to be copied.
+   * @param object $parent the parent category of the destination category.
    * @param string $newname the name of the new category
    * @return object|bool the new category or false.
    */
-  public function copyCategory($category, $newname) {
+  public function copyCategory($category, $parent, $newname) {
     $model = clone($category);
     $model->name = $newname;
+    $model->parentId = $parent->id;
 
     if (($newcategory = $this->createCategory($model) === false)) {
       return false;
