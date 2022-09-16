@@ -27,4 +27,4 @@ If you've already the plugin installed, you need to *Uninstall* it first so the 
  - After the test, you'll see a new button "Replace SwitchCast activities" that actually performs the migration.
  - The migration script will care about all required operations with Kaltura (renaming categories, moving categories, adding new categories, adding content to new categories...). However you may want to do that in a more reliable environment. In this case just get the operations to be done from the test log, apply the operations on Kaltura, and run the test again to see that these log lines have disappeared. Then finally perform the migration.
 ## Moodle version
- - Tested in Moodle 3.11
+ - Tested in Moodle 3.11 and Moodle 4.02
