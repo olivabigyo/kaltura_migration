@@ -22,7 +22,9 @@ If you've already the plugin installed, you need to *Uninstall* it first so the 
  - Press the button "Test replace videos" to attempt replacing the videos from a course or from the whole site, but don't actually change the database.
  - After the tests, you'll see a new button "Replace Videos". Click it to perform the migration of embedded and linked videos.
  ### Replace SwitchCast activities
- - Press the button "Test replace SwitchCast activities" to attempt replacing teh SwitchCast activities, without actually doing it.
+ - Choose whether you want to (a) replace SwitchCast activities by *Video gallery* external tools, keeping the same course structure or (b) delete all SwitchCast activities and add the media from all these acrivities to the standard Kaltura *Course Gallery*.
+ - Press the button "Test replace SwitchCast activities" to attempt replacing the SwitchCast activities, without actually doing it.
  - After the test, you'll see a new button "Replace SwitchCast activities" that actually performs the migration.
+ - The migration script will care about all required operations with Kaltura (renaming categories, moving categories, adding new categories, adding content to new categories...). However you may want to do that in a more reliable environment. In this case just get the operations to be done from the test log, apply the operations on Kaltura, and run the test again to see that these log lines have disappeared. Then finally perform the migration.
 ## Moodle version
  - Tested in Moodle 3.11
