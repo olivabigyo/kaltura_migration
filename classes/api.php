@@ -193,7 +193,7 @@ class tool_kaltura_migration_api {
     $model->name = $newname;
     $model->parentId = $parent->id;
 
-    if (($newcategory = $this->createCategory($model) === false)) {
+    if (($newcategory = $this->createCategory($model)) === false) {
       return false;
     }
 

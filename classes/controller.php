@@ -445,6 +445,7 @@ EOD;
     $category = $this->getCourseCategory($api, $course, $testing);
     if ($category === false) {
       $this->logger->error("Error creating course category.");
+      return false;
     }
     $replaced = 0;
     foreach ($cms as $cm) {
@@ -456,7 +457,7 @@ EOD;
       } else {
         $cmcategory = $cmcategories[0];
         if (count($cmcategories) > 1) {
-          $this->logger->warning("Warning: more than one category found with reference id {$instance->ext_id}. Taking the one with id {$cmcategory->id}.");
+          $this->logger->warning("More than one category found with reference id {$instance->ext_id}. Taking the one with id {$cmcategory->id}.");
         }
         if ($testing) {
           $this->logger->info("Module '{$instance->name}' ready to migrate!");
