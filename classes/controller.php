@@ -783,7 +783,7 @@ EOD;
           if (strpos($old_name, $parent->fullName) !== false) {
             $this->logger->op(tool_kaltura_migration_logger::CODE_OP_RENAME_CATEGORY, $category->id, $category_name);
           } else {
-            $this->logger->op(tool_kaltura_migration_logger::CODE_OP_MOVE_CATEGORY, $category->id, $parent->fullName);
+            $this->logger->op(tool_kaltura_migration_logger::CODE_OP_MOVE_CATEGORY, $category->id, $category->fullName);
           }
         }
       }
