@@ -355,18 +355,18 @@ class tool_kaltura_migration_controller {
             $record->replaced = true;
             $DB->update_record('tool_kaltura_migration_urls', $record);
             $replaced++;
-            $this->logger->info('Video replaced with refid ' . implode(',', $referenceIds));
+            $this->logger->info('Video replaced in table ' . $table . ' column ' . $column . ' record id ' . $id . ' with refid ' . implode(',', $referenceIds));
           } else if (!$test) {
-            $this->logger->error('Could not replace html content.');
+            $this->logger->error('Could not replace html content in table ' . $table . ' column ' . $column . ' record id ' . $id);
           }
         }
       }
     }
+    $this->logger->end();
     if (!$test) {
       global $OUTPUT;
       echo $OUTPUT->notification(get_string('replacednvideos', 'tool_kaltura_migration', $replaced), \core\output\notification::NOTIFY_SUCCESS);
     }
-    $this->logger->end();
     $errors = $this->logger->getErrors();
     return count($errors) == 0 ? true : $errors;
   }
