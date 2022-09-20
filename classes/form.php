@@ -129,8 +129,11 @@ class tool_kaltura_migration_form extends moodleform
             if (intval($id) == -1) {
                 $courses['-1'] = get_string('contentnotincourse', 'tool_kaltura_migration');
             } else {
-                $course = get_course($id);
-                $courses[$id] = $course->fullname . '(' . $course->shortname . ')';
+                global $DB;
+                $course = $DB->get_record('course', array('id' => $id));
+                if (!empty($course)) {
+                    $courses[$id] = $course->fullname . '(' . $course->shortname . ')';
+                }
             }
         }
 
