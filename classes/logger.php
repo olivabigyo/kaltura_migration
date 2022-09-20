@@ -140,7 +140,7 @@ class tool_kaltura_migration_logger {
     } else if ($code == self::CODE_OP_ADD_MEDIA_TO_CATEGORY) {
       $msg = "Media $id1 {$infix}added to category $id2";
     } else if ($code == self::CODE_OP_COPY_CATEGORY) {
-      $msg = "Category $id {$infix}copied to name $id2 with all its entries";
+      $msg = "Category $id1 {$infix}copied to name $id2 with all its entries";
     }
     $this->log(self::LEVEL_OPERATION, $msg, $code, $id1, $id2);
   }
