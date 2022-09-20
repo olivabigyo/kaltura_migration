@@ -4,9 +4,14 @@ require_once($CFG->dirroot . '/local/kaltura/API/KalturaClient.php');
 
 class tool_kaltura_migration_api {
   protected $client;
+  /**
+   * @var tool_kaltura_migration_logger
+   */
+  protected $logger;
 
-  function __construct() {
+  function __construct($logger) {
     $this->client = self::buildClient();
+    $this->logger = $logger;
   }
 
   protected static function buildClient() {
@@ -143,12 +148,12 @@ class tool_kaltura_migration_api {
             $retry++;
             return $this->moveCategory($category, $parent, $name, $retry);
           } else {
-            echo "Error: Could not move category {$category->id} from {$category->parentId} to {$parent->id} after 3 tries. Please try again or do the move my other means.";
+            $this->logger->error("Could not move category {$category->id} from {$category->parentId} to {$parent->id} after 3 tries. Please try again or do the move my other means");
             return false;
           }
         }
         // Prevent pausing migration.
-        echo "Error: " . $e->getMessage();
+        $this->logger->error($e->getMessage());
         return false;
       }
     }
@@ -171,7 +176,7 @@ class tool_kaltura_migration_api {
       return $newcategory;
     } catch (Exception $e) {
       // Prevent pausing execution if cant create new category.
-      echo 'Error creating catgory: ' . $e->getMessage();
+      $this->logger->error("Could not create category. " . $e->getMessage());
       return false;
     }
   }
@@ -211,17 +216,17 @@ class tool_kaltura_migration_api {
 
     foreach ($entryids as $id) {
       if (in_array($id, $existingids)) {
-        echo "Entry id {$id} already in category, no need to add.\n";
+        $this->logger->info("Entry id {$id} already in category, no need to add");
       } else {
         $entry = new KalturaCategoryEntry();
         $entry->categoryId = $tocategory->id;
         $entry->entryId = $id;
         try {
           $this->client->categoryEntry->add($entry);
-          echo "Added entry id {$id} to category {$tocategory->id}.\n";
+          $this->logger->op(tool_kaltura_migration_logger::CODE_OP_ADD_MEDIA_TO_CATEGORY, $id, $tocategory->id);
         } catch (Exception $e) {
           // Don't pause execution.
-          echo "Error adding entry {$id} to category {$tocategory->id}. Should be fixed manually!" . $e->getMessage();
+          $this->logger->error("Error adding entry {$id} to category {$tocategory->id}. Should be fixed manually!" . $e->getMessage());
         }
       }
 

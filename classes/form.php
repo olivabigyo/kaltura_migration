@@ -105,6 +105,12 @@ class tool_kaltura_migration_form extends moodleform
         } else {
             $mform->addElement('static', 'message', '', get_string('therearenomodules', 'tool_kaltura_migration'));
         }
+
+        $mform->addElement('header', 'logsheader', get_string('logs', 'tool_kaltura_migration'));
+        $buttonarray = [];
+        $buttonarray[] = $mform->createElement('submit', 'opdownloadurls', get_string('downloadurls', 'tool_kaltura_migration'));
+        $buttonarray[] = $mform->createElement('submit', 'opdownloadlogs', get_string('downloadlogs', 'tool_kaltura_migration'));
+        $mform->addGroup($buttonarray, 'buttonar3', '', ' ', false);
     }
 
     protected function getReplaceVideoCourses() {

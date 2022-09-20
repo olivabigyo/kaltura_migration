@@ -56,6 +56,20 @@ if ($optestreplacemodules = optional_param('optestreplacemodules', 0, PARAM_BOOL
 if ($opreplacemodules = optional_param('opreplacemodules', 0, PARAM_BOOL)) {
   $op = 'opreplacemodules';
 }
+if ($opdownloadurls = optional_param('opdownloadurls', 0, PARAM_BOOL)) {
+  $op = 'opdownloadurls';
+}
+if ($opdownloadlogs = optional_param('opdownloadlogs', 0, PARAM_BOOL)) {
+  $op = 'opdownloadlogs';
+}
+
+if ($opdownloadurls) {
+  $migration->downloadCSV('tool_kaltura_migration_urls');
+  exit(0);
+} else if ($opdownloadlogs) {
+  $migration->downloadCSV('tool_kaltura_migration_logs');
+  exit(0);
+}
 
 if ($optestreplacevideos || $opreplacevideos) {
   $course = $coursesreplacevideos;

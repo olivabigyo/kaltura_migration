@@ -57,4 +57,8 @@ $string['tool_kaltura_migration_settings'] = 'Kaltura Migration Settings';
 $string['nomediagallery'] = 'You need to create the LTI type Media Gallery before performing the migration';
 $string['modulestolti'] = 'Replace each SwitchCast module by a Media Gallery external tool';
 $string['modulestocoursemedia'] = 'Move all content from SwitchCast modules to the single course Media Gallery';
+$string['logs'] = 'Download logs';
+$string['downloadurls'] = 'Download video urls';
+$string['downloadlogs'] = 'Download execution logs';
+
 
