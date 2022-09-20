@@ -22,5 +22,22 @@
         <INDEX NAME="video-url" UNIQUE="false" FIELDS="url"/>
       </INDEXES>
     </TABLE>
+    <TABLE NAME="tool_kaltura_migration_logs" COMMENT="Table for execution logs.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="execution" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="All entries from the same execution share this id."/>
+        <FIELD NAME="testing" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Is just a test execution?"/>
+        <FIELD NAME="entry" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Entry number within an execution."/>
+        <FIELD NAME="level" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Log level: 1=INFO, 2=OPERATION, 3=WARNING, 4=ERROR"/>
+        <FIELD NAME="time" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Timestamp"/>
+        <FIELD NAME="message" TYPE="text" NOTNULL="true" COMMENT="Log message"/>
+        <FIELD NAME="code" TYPE="char" LENGTH="30" NOTNULL="true" SEQUENCE="false" COMMENT="Optional. Machine readable log code."/>
+        <FIELD NAME="id1" TYPE="char" LENGTH="128" NOTNULL="true" SEQUENCE="false" COMMENT="Optional. First parameter id."/>
+        <FIELD NAME="id2" TYPE="char" LENGTH="128" NOTNULL="true" SEQUENCE="false" COMMENT="Optional. Second parameter."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+    </TABLE>
   </TABLES>
 </XMLDB>

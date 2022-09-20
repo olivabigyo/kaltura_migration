@@ -32,6 +32,7 @@ require_once($CFG->dirroot . '/mod/lti/locallib.php');
 require_once($CFG->dirroot . '/mod/lti/edit_form.php');
 
 require_once(__DIR__ . '/api.php');
+require_once(__DIR__ . '/logger.php');
 
 class tool_kaltura_migration_controller {
   /** @var \core\progress\base Progress bar for the current operation. */
@@ -44,11 +45,12 @@ class tool_kaltura_migration_controller {
   /** @var array of "course-cmid" for new modules to be created during a testing session. */
   protected $testing_created_modules = [];
 
+  protected $logger;
+
   /**
    * @param \core\progress\base $progress Progress bar object, not started.
    */
   function execute($progress) {
-
     $this->progress = $progress;
     $this->deleteResults();
     $this->search();
@@ -256,15 +258,24 @@ class tool_kaltura_migration_controller {
     return $DB->count_records('tool_kaltura_migration_urls', ['replaced' => true]);
   }
 
-  protected function getCSV() {
+  protected function array2csv($fields) {
+    $buffer = fopen('php://temp', 'r+');
+    fputcsv($buffer, $fields);
+    rewind($buffer);
+    $csv = fgets($buffer);
+    fclose($buffer);
+    return $csv;
+  }
+
+  protected function getCSV($table) {
     global $DB;
     $csv = '';
-    $columns = $DB->get_columns('tool_kaltura_migration_urls');
+    $columns = $DB->get_columns($table);
     // Headers row.
-    $csv .= implode(',', array_map(function($column) {return $column->name; }, $columns)) . "\n";
-    $records = $DB->get_records('tool_kaltura_migration_urls');
+    $csv .= $this->array2csv(array_map(function($column) {return $column->name; }, $columns));
+    $records = $DB->get_records($table);
     foreach ($records as $record) {
-      $csv .= implode(',', (array) $record) . "\n";
+      $csv .= $this->array2csv((array)$record);
     }
     return $csv;
   }
@@ -272,7 +283,7 @@ class tool_kaltura_migration_controller {
   /**
    * Send a CSV file for download.
    */
-  function downloadCSV() {
+  function downloadCSV($table) {
     $fs = get_file_storage();
     $context = context_system::instance();
     $fileinfo = array(
@@ -281,7 +292,7 @@ class tool_kaltura_migration_controller {
       'filearea' => 'tool_kaltura_migration',
       'itemid' => 0,
       'filepath' => '/',
-      'filename' => 'switch_video_urls.csv'
+      'filename' => $table . '.csv'
     );
     // Delete file if already exists.
     $file = $fs->get_file($fileinfo['contextid'], $fileinfo['component'],
@@ -289,7 +300,7 @@ class tool_kaltura_migration_controller {
     if ($file) {
       $file->delete();
     }
-    $file = $fs->create_file_from_string($fileinfo, $this->getCSV());
+    $file = $fs->create_file_from_string($fileinfo, $this->getCSV($table));
     send_stored_file($file, 0, 0, true);
   }
 
@@ -313,56 +324,50 @@ class tool_kaltura_migration_controller {
    */
   public function replace($course = -2, $test = false) {
     global $DB;
-    $errors = [];
     $conditions = [];
     if (intval($course) > -2) {
       $conditions['course'] = $course;
     }
     $records = $DB->get_records('tool_kaltura_migration_urls', $conditions);
+    $this->logger = new tool_kaltura_migration_logger();
+    $this->logger->start($test);
 
-    $api = new tool_kaltura_migration_api();
-    echo '<table border="1">';
-    $i = 1;
+    $api = new tool_kaltura_migration_api($this->logger);
+
+
     $replaced = 0;
     foreach ($records as $record) {
       $table = $record->tblname;
       $id = $record->resid;
       if (!$record->replaced) {
-        echo '<tr><td>' . $i++ . ' ('. $table . ' ' . $id . ')</td>';
+        $this->logger->entry($table . ' ' . $id);
+
         $column = $record->colname;
         $url = $record->url;
         $referenceIds = $this->getReferenceIdsFromUrl($url);
         if (!$referenceIds) {
-          $error = 'Error: could not get refid from url ' . $url;
-          echo "<td>$error</td>";
-          $errors[] = $error;
+          $this->logger->error('Could not get refid from url ' . $url);
         } else {
           $entry = $api->getMediaByReferenceIds($referenceIds);
           if (!$entry) {
-            $error = 'Error: could not get Kaltura media with refid ' . implode(',', $referenceIds);
-            echo "<td>$error</td>";
-            $errors[] = $error;
+            $this->logger->error('Could not get Kaltura media with refid ' . implode(',', $referenceIds));
           } else if ($this->replaceVideo($table, $column, $id, $url, $entry, $test)) {
             $record->replaced = true;
             $DB->update_record('tool_kaltura_migration_urls', $record);
             $replaced++;
-            echo '<td>Video replaced with refid ' . implode(',', $referenceIds) . '</td>';
+            $this->logger->info('Video replaced with refid ' . implode(',', $referenceIds));
           } else if (!$test) {
-            $error = 'Error: Could not replace html content.';
-            echo "<td>$error</td>";
-            $errors[] = $error;
+            $this->logger->error('Could not replace html content.');
           }
         }
-        echo '</tr>';
       }
     }
-    echo '</table>';
-
     if (!$test) {
       global $OUTPUT;
       echo $OUTPUT->notification(get_string('replacednvideos', 'tool_kaltura_migration', $replaced), \core\output\notification::NOTIFY_SUCCESS);
     }
-
+    $this->logger->end();
+    $errors = $this->logger->getErrors();
     return count($errors) == 0 ? true : $errors;
   }
 
@@ -378,7 +383,7 @@ class tool_kaltura_migration_controller {
     global $DB;
     $content = $DB->get_field($table, $column, ['id' => $id]);
     if ($test) {
-      echo '<td>' . $content . '</td>';
+      $this->logger->content($content);
     }
     // replace video embeddings
     $content = preg_replace_callback([$iframe_reg, $iframe2_reg, $video_reg, $video2_reg], function($matches) use ($entry) {
@@ -389,7 +394,7 @@ class tool_kaltura_migration_controller {
     // replace video links and other references (not embeddings)
     $content = str_replace($url, $this->getKalturaVideoUrl($entry), $content);
     if ($test) {
-      echo '<td>' . $content . '</td>';
+      $this->logger->content($content);
       return false;
     } else {
       return $DB->set_field($table, $column, $content, ['id' => $id]);
@@ -439,39 +444,32 @@ EOD;
 
     $category = $this->getCourseCategory($api, $course, $testing);
     if ($category === false) {
-      $error = $this->swithCastModuleErrorMessage($cm, "Error creating course category. Can't migrate.");
-      echo $error;
+      $this->logger->error("Error creating course category.");
     }
-    echo '<table border="1">';
-    $i = 1;
     $replaced = 0;
     foreach ($cms as $cm) {
-      echo "<tr><td>$i</td><td>";
+      $this->logger->entry();
       $instance = $this->getSwitchCastInstance($cm);
       $cmcategories = $api->getCategoriesByReferenceId($instance->ext_id);
       if (count($cmcategories) == 0) {
-        $error = $this->swithCastModuleErrorMessage($cm, "Kaltura category with reference id {$instance->ext_id} not found.");
-        echo $error;
+        $this->logger->errorCM($cm, "Kaltura category with reference id {$instance->ext_id} not found.");
       } else {
         $cmcategory = $cmcategories[0];
         if (count($cmcategories) > 1) {
-          echo "<p>Warning: more than one category found with reference id {$instance->ext_id}. Taking the one with id {$cmcategory->id}.</p>";
+          $this->logger->warning("Warning: more than one category found with reference id {$instance->ext_id}. Taking the one with id {$cmcategory->id}.");
         }
         if ($testing) {
-          echo "<p>Module '{$instance->name}' ready to migrate!</p>";
+          $this->logger->info("Module '{$instance->name}' ready to migrate!");
         } else {
           // copy all media from module category to course category.
           $api->copyMedia($cmcategory, $category);
           // Remove the switchcast cm.
-            course_delete_module($cm->id);
-          echo "<p>Media successfully migrated from module name '{$instance->name}' to Course Media Gallery.</p>";
+          course_delete_module($cm->id);
+          $this->logger->info("Media successfully migrated from module name '{$instance->name}' to Course Media Gallery.");
           $replaced++;
         }
       }
-      echo '</td></tr>' . "\n";
-      $i++;
     }
-    echo '</table>';
     if (!$testing) {
       global $OUTPUT;
       echo $OUTPUT->notification(get_string('replacednmodules', 'tool_kaltura_migration', $replaced), \core\output\notification::NOTIFY_SUCCESS);
@@ -481,9 +479,9 @@ EOD;
    * Delete all switchcast activities and send all media from Switchcast modules
    * to the Course Media Gallery category.
    * */
-  function replaceModulesToCourseMedia($course = -1, $testing = false) {
+  protected function replaceModulesToCourseMedia($course = -1, $testing = false) {
     global $DB;
-    $api = new tool_kaltura_migration_api();
+    $api = new tool_kaltura_migration_api($this->logger);
     if ($course >= 0) {
       $this->replaceModulesToCourseMediaSingle($api, $course, $testing);
     } else {
@@ -501,68 +499,60 @@ EOD;
    * @param int $course The course to migrate, negative for all courses.
    * @param bool $testing
    *
-   * @return mixed boolean TRUE if no errors, an array of error messages if any error.
    */
-  function replaceModulesToLTI($course = -2, $testing = false) {
+  protected function replaceModulesToLTI($course = -2, $testing = false) {
     // Get all switchcast modules.
     $cms = $this->getAllSwitchCastModules($course);
-    $errors = [];
-    $api = new tool_kaltura_migration_api();
-
-    echo '<table border="1">';
-    $i = 1;
+    $api = new tool_kaltura_migration_api($this->logger);
     $replaced = 0;
     foreach ($cms as $cm) {
-      echo "<tr><td>$i</td><td>";
-      $i++;
+      $this->logger->entry();
       $instance = $this->getSwitchCastInstance($cm);
       $modinfo = $this->getLTIModuleInfoFromSwitchCast($cm, $instance);
       if (!$modinfo) {
-          $error = $this->swithCastModuleErrorMessage($cm, "Create first the Video Gallery LTI type. Can't migrate!");
-          echo $error;
-          $errors[] = $error;
+          $this->logger->errorCM($cm, "Create first the Video Gallery LTI type. Can't migrate!");
       } else {
         $category = $this->getModuleCategory($api, $cm, $instance, $testing);
         if ($category === false) {
           // Category not found. Report error!
-          $error = $this->swithCastModuleErrorMessage($cm, "Could not associate kaltura category. Can't migrate!");
-          echo $error;
-          $errors[] = $error;
+          $this->logger->errorCM($cm, "Could not associate kaltura category. Can't migrate!");
         } else {
           if ($testing) {
-            echo '<p>Ready to migrate!</p>';
+            $this->logger->info('Ready to migrate!');
             $this->testing_created_modules[] = $category->name;
           } else {
             $this->createModule($cm, $modinfo);
             // Remove the switchcast cm.
             course_delete_module($cm->id);
             $replaced++;
-            echo "<p>Successfully migrated <em>{$instance->name}</em>!</p>";
+            $this->logger->info("Successfully migrated '{$instance->name}'");
           }
         }
       }
-      echo '</td></tr>' . "\n";
     }
-    echo '</table>';
 
     if (!$testing) {
       global $OUTPUT;
       echo $OUTPUT->notification(get_string('replacednmodules', 'tool_kaltura_migration', $replaced), \core\output\notification::NOTIFY_SUCCESS);
     }
-
-    return (count($errors) == 0) ? true : $errors;
   }
 
   /**
    * Migrate switchcast modules either to the kaltura course media gallery or to
    * external tool activities.
+   * @return bool|array true if no errors and the error array if errors.
   */
   function replaceModules($course = -2, $modulestocoursemedia = false, $testing = false) {
+    $this->logger = new tool_kaltura_migration_logger();
+    $this->logger->start($testing);
     if ($modulestocoursemedia) {
-      return $this->replaceModulesToCourseMedia($course, $testing);
+      $this->replaceModulesToCourseMedia($course, $testing);
     } else {
-      return $this->replaceModulesToLTI($course, $testing);
+      $this->replaceModulesToLTI($course, $testing);
     }
+    $this->logger->end();
+    $errors = $this->logger->getErrors();
+    return count($errors) == 0 ? true : $errors;
   }
 
   /**
@@ -599,10 +589,10 @@ EOD;
    * Creates (or tests creation) the Kaltura category for the given course.
    */
   protected function createCourseCategory($api, $courseid, $testing = false) {
-    $fullname = $this->getParentCategoryFullName();
     $parent = $this->getParentCategory($api);
     if ($parent === false) {
-      echo "Error: Could not find parent category {$fullname}.";
+      $fullname = $this->getParentCategoryFullName();
+      $this->logger->error("Could not find parent category {$fullname}.");
       return false;
     }
     $category = (object)[
@@ -624,13 +614,16 @@ EOD;
       'isAggregationCategory' => false,
       'aggregationCategories' => ''
     ];
-    if ($testing) {
-      return $category;
-    } else {
+    if (!$testing) {
       $category = $api->createCategory($category);
-      echo "Created course category id {$category->id} name {$category->name}.";
-      return $category;
+      $id = $category->id;
+      $fullName = $category->fullName;
+    } else {
+      $id = '';
+      $fullName = $category->name;
     }
+    $this->logger->op(tool_kaltura_migration_logger::CODE_OP_CREATE_CATEGORY, $id, $fullName);
+    return $category;
   }
   /**
    * Fetches or creates the Kaltura category for the given course.
@@ -640,9 +633,9 @@ EOD;
     $category = $api->getCategoryByFullName($fullname);
     if ($category == false) {
       if ($testing) {
-        echo "Warning: Kaltura category not found for course {$courseid}. The
+        $this->logger->warning("Kaltura category not found for course {$courseid}. The
         migration process will create a new one. You can also manually visit the
-        course media gallery in order to create the categories in Kaltura.";
+        course media gallery in order to create the categories in Kaltura.");
       }
       // No Media gallery exists for this course. We'll create a new one.
       // Note that this function still has the testing parameter.
@@ -690,11 +683,11 @@ EOD;
 
     $categories = $api->getCategoriesByReferenceId($instance->ext_id);
     if (count($categories) == 0) {
-      echo "<p>Error: There is no kaltura category with reference id {$instance->ext_id}.</p>";
+      $this->logger->error("There is no kaltura category with reference id {$instance->ext_id}");
       return false;
     }
     if ($testing) {
-      echo "<p>Found kaltura category with reference id {$instance->ext_id} for Switchcast module id {$cm->id} name '{$instance->name}'.</p>";
+      $this->logger->info("Found kaltura category with reference id {$instance->ext_id} for Switchcast module id {$cm->id} name '{$instance->name}'");
       // Simulate previous updates.
       foreach ($categories as $index => $category) {
         if (isset($this->testing_updates[$category->id])) {
@@ -731,11 +724,26 @@ EOD;
     // the proper name. However that may clash with an existing category (with
     // different refid). We check this possibility here:
     $existing = $api->getCategoryByParentAndName($parent, $category_name);
+    if ($testing){
+      if ($existing && isset($this->testing_updates[$existing->id])) {
+        $updated = $this->testing_updates[$existing->id];
+        if ($updated->name != $category_name) {
+          $existing = false;
+        }
+      } else if (!$existing) {
+        foreach ($this->testing_updates as $candidate) {
+          if ($candidate->name == $category_name && $candidate->parentId == $parent->id) {
+            $existing = $candidate;
+          }
+        }
+
+      }
+    }
     if ($existing) {
-      echo "<p>Error: there already exists another category with name {$category_name}
+      $this->logger->error("There already exists another category with name {$category_name}
       but with different reference id {$existing->referenceId} so it's not possible to
       rename the related category found. That requires manual fix: either delete,
-      rename or change the reference Id of this category to {$instance->ext_id}.<p>";
+      rename or change the reference Id of this category to {$instance->ext_id}.");
       return false;
     }
 
@@ -753,11 +761,10 @@ EOD;
       // (b) We have a category for our module, but we need to move/rename it.
       if ($testing) {
         if ($category->parentId !== $parent->id) {
-          $oldparentname = substr($category->fullName, 0, strrpos($category->fullName, '>'));
-          echo "<p>Warning: Kaltura category {$category->id} will be moved from '{$oldparentname}' to '{$parent->fullName}'</p>";
+          $this->logger->op(tool_kaltura_migration_logger::CODE_OP_MOVE_CATEGORY, $category->id, $parent->fullName);
         }
         if ($category->name !== $category_name) {
-          echo "<p>Warning: Kaltura category {$category->id} will be renamed from '{$category->name}' to '$category_name'</p>";
+          $this->logger->op(tool_kaltura_migration_logger::CODE_OP_RENAME_CATEGORY, $category->id, $category_name);
         }
         // simulate move in testing execution.
         $category->name = $category_name;
@@ -769,27 +776,32 @@ EOD;
         $category = $api->moveCategory($category, $parent, $category_name);
         if ($category === false) {
           $new_name = $parent->fullName . '>' . $category_name;
-          echo $this->swithCastModuleErrorMessage($cm, "Error moving category id {$category->id} refid {$instance->ext_id} from '{$old_name}' to '{$new_name}'.");
+          $this->logger->errorCM($cm, "Error moving category id {$category->id} refid {$instance->ext_id} from '{$old_name}' to '{$new_name}'.");
           return false;
         } else {
-          echo "<p>Moved category {$category->id} from '{$old_name}' to '{$category->fullName}'.<p>";
+          if (strpos($old_name, $parent->fullName) !== false) {
+            $this->logger->op(tool_kaltura_migration_logger::CODE_OP_RENAME_CATEGORY, $category->id, $category_name);
+          } else {
+            $this->logger->op(tool_kaltura_migration_logger::CODE_OP_MOVE_CATEGORY, $category->id, $parent->fullName);
+          }
         }
       }
     } else {
       // (c) Didn't found any free category for our module. Let's create a new one.
       $model = array_shift($categories);
       if ($testing) {
-        echo "<p>Warning: There is another SwitchCast module pointing to the same category. " .
-             "A new category will be created for this module and all media in this module will be added to the new category.</p>";
+        $this->logger->warning("There is another SwitchCast module pointing to the same category. "
+        . "A new category will need to be created and all media from the existing category added also to the new category.");
+        $this->logger->op(tool_kaltura_migration_logger::CODE_OP_COPY_CATEGORY, $model->id, $category_name);
         $category = $model;
       } else {
         $category = $api->copyCategory($model, $parent, $category_name);
         if ($category === false) {
           $fullname = $parent->fullName . '>' . $category_name;
-          echo $this->swithCastModuleErrorMessage($cm, "Error copying category id {$model->id} refid {$instance->ext_id} to {$fullname}");
+          $this->logger->errorCM($cm, "Error copying category id {$model->id} refid {$instance->ext_id} to {$fullname}");
           return false;
         } else {
-          echo "<p>Created new kaltura category {$category->id} name '{$category->name}'</p>";
+          $this->logger->op(tool_kaltura_migration_logger::CODE_OP_CREATE_CATEGORY, $category->id, $category->fullName);
         }
       }
     }
@@ -875,15 +887,6 @@ EOD;
     global $DB;
     $instance = $DB->get_record('opencast', ['id' => $cm->instance]);
     return $instance;
-  }
-
-  /**
-   * Build error message referring a particular opencast course module instance.
-   * @param object $cm course module record.
-   * @param string $msg error detail message
-  */
-  protected function swithCastModuleErrorMessage($cm, $msg) {
-    return '<p class="alert-danger">' . "Error in opencast course module id {$cm->id} from course id {$cm->course}. " . $msg . '</p>';
   }
 
   public function getVideoGalleryLTIType() {
