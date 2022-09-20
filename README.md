@@ -22,9 +22,15 @@ If you've already the plugin installed, you need to *Uninstall* it first so the 
  - Press the button "Test replace videos" to attempt replacing the videos from a course or from the whole site, but don't actually change the database.
  - After the tests, you'll see a new button "Replace Videos". Click it to perform the migration of embedded and linked videos.
  ### Replace SwitchCast activities
- - Choose whether you want to (a) replace SwitchCast activities by *Video gallery* external tools, keeping the same course structure or (b) delete all SwitchCast activities and add the media from all these acrivities to the standard Kaltura *Course Gallery*.
+ - Choose whether you want to 
+   1. Replace SwitchCast activities by *Video gallery* external tools, keeping the same course structure or
+   2. Delete all SwitchCast activities and add the media from all these acrivities to the standard Kaltura *Course Gallery*.
  - Press the button "Test replace SwitchCast activities" to attempt replacing the SwitchCast activities, without actually doing it.
  - After the test, you'll see a new button "Replace SwitchCast activities" that actually performs the migration.
- - The migration script will care about all required operations with Kaltura (renaming categories, moving categories, adding new categories, adding content to new categories...). However you may want to do that in a more reliable environment. In this case just get the operations to be done from the test log, apply the operations on Kaltura, and run the test again to see that these log lines have disappeared. Then finally perform the migration.
+ - The migration script will care about all required operations with Kaltura (renaming categories, moving categories, adding new categories, adding content to new categories...). However you may want to do that in a more reliable environment. In this case just get the operations to be done from the test log (see next section), apply the operations on Kaltura, and run the test again to see that these log lines have disappeared. Then finally perform the migration.
+ ### Download logs
+The last section of the page comes with two buttons to download different logs.
+ - *Download video urls* button will output a file CSV with all video urls found in this Moodle site. The file will include the table name, column, record id, url and the course.
+ - *Download logs* button will output a CSV file with all logs both from testing and real operations. records include a timespan, an execution identifier, whether or not the execution was testing, an entry identifier, a log level (1=info, 2=operation, 3=warning, 4=error) and a message. Log lines with level = operation are related to operations done -if real execution- or to be done -if testing execution- to the Kaltura API. These lines include a machine readable code and two identifiers that are sufficient to reproduce this operation.
 ## Moodle version
  - Tested in Moodle 3.11 and Moodle 4.02
