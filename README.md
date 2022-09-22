@@ -32,5 +32,6 @@ If you've already the plugin installed, you need to *Uninstall* it first so the 
 The last section of the page comes with two buttons to download different logs.
  - *Download video urls* button will output a file CSV with all video urls found in this Moodle site. The file will include the table name, column, record id, url and the course.
  - *Download logs* button will output a CSV file with all logs both from testing and real operations. records include a timespan, an execution identifier, whether or not the execution was testing, an entry identifier, a log level (1=info, 2=operation, 3=warning, 4=error) and a message. Log lines with level = operation are related to operations done -if real execution- or to be done -if testing execution- to the Kaltura API. These lines include a machine readable code and two identifiers that are sufficient to reproduce this operation.
+- Note that if you uninstall the plugin the logs will be lost.
 ## Moodle version
  - Tested in Moodle 3.11 and Moodle 4.02
