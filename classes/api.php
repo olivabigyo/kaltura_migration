@@ -39,12 +39,15 @@ class tool_kaltura_migration_api {
     if ($count == 0) {
       // Entry not found!
       return false;
-    } else if ($count > 1) {
-      // Found more than one entry with this reference id!.
-      return false;
-    } else {
-      return $result->objects[0];
     }
+    $entry = $result->objects[0];
+    if ($count > 1) {
+      // Found more than one entry with this reference id!.
+      $reference = $entry->referenceId;
+      $id = $entry->id;
+      $this->logger->warning("There are $count entries with reference id $reference, taking the first one with id $id.");
+    }
+    return $entry;
   }
   /**
    * @param array $referenceIds
