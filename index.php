@@ -31,6 +31,10 @@ require_once($CFG->libdir.'/adminlib.php');
 // Increase server limits for this migration script.
 core_php_time_limit::raise();
 raise_memory_limit(MEMORY_EXTRA);
+// Increase other limits found by ZHAW client, they should not be necessary in
+// general, but probably required in their particular server configuration.
+session_cache_expire(600);
+ini_set('opcache.force_restart_timeout', 600);
 
 admin_externalpage_setup('tool_kaltura_migration');
 
