@@ -95,7 +95,7 @@ if (!$migration->getVideoGalleryLTIType()) {
 }
 if (!$migration->checkKalturaAPIConnection()) {
   echo $OUTPUT->notification(get_string('nokalturaapiconnection', 'tool_kaltura_migration'), \core\output\notification::NOTIFY_ERROR);
-} else if (!get_config('uiconf_id', 'tool_kaltura_migration')) {
+} else if (get_config('tool_kaltura_migration', 'uiconf_id') != $migration->getUIConfId()) {
   $uiconfid = $migration->getUIConfId();
   echo $OUTPUT->notification(get_string('nouiconfid', 'tool_kaltura_migration', $uiconfid), \core\output\notification::NOTIFY_WARNING);
 }

@@ -957,7 +957,7 @@ EOD;
    */
   public function checkKalturaAPIConnection() {
     try {
-      $api = new tool_kaltura_migration_api($this->logger);
+      $confid = $this->getUIConfId();
       return true;
     } catch (Exception $error) {
       return false;
