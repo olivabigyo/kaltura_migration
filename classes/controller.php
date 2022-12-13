@@ -411,14 +411,16 @@ class tool_kaltura_migration_controller {
       $style = "style=\"width: {$width}px; height: {$height}px;\"";
     }
     $hash = mt_rand();
+    $uiconfid = $this->getUIConfId();
+    $partnerid = get_config('tool_kaltura_migration', 'partner_id');
     return <<<EOD
-<script src="https://api.cast.switch.ch/p/105/sp/10500/embedIframeJs/uiconf_id/23448506/partner_id/105"></script>
+<script src="https://api.cast.switch.ch/p/${partnerid}/sp/${partnerid}00/embedIframeJs/uiconf_id/{$uiconfid}/partner_id/{$partnerid}"></script>
 <div id="kaltura_player_{$hash}" {$style}></div>
 <script>
 kWidget.embed({
   "targetId": "kaltura_player_{$hash}",
-  "wid": "_105",
-  "uiconf_id": 23448506,
+  "wid": "_{$partnerid}",
+  "uiconf_id": {$uiconfid},
   "flashvars": {},
   "entry_id": "{$entry->id}"
 });
@@ -971,7 +973,7 @@ EOD;
   public function getUIConfId() {
     static $uiconfid = null; // Static cache.
     if ($uiconfid == null) {
-      $configured = get_config('uiconf_id', 'tool_kaltura_migration');
+      $configured = get_config('tool_kaltura_migration', 'uiconf_id');
       $api = new tool_kaltura_migration_api($this->logger);
       $uiconfs = $api->getUiConfs();
       foreach ($uiconfs as $uiconf) {
