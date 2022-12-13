@@ -411,14 +411,16 @@ class tool_kaltura_migration_controller {
       $style = "style=\"width: {$width}px; height: {$height}px;\"";
     }
     $hash = mt_rand();
+    $uiconfid = $this->getUIConfId();
+    $partnerid = get_config('tool_kaltura_migration', 'partner_id');
     return <<<EOD
-<script src="https://api.cast.switch.ch/p/105/sp/10500/embedIframeJs/uiconf_id/23448506/partner_id/105"></script>
+<script src="https://api.cast.switch.ch/p/${partnerid}/sp/${partnerid}00/embedIframeJs/uiconf_id/{$uiconfid}/partner_id/{$partnerid}"></script>
 <div id="kaltura_player_{$hash}" {$style}></div>
 <script>
 kWidget.embed({
   "targetId": "kaltura_player_{$hash}",
-  "wid": "_105",
-  "uiconf_id": 23448506,
+  "wid": "_{$partnerid}",
+  "uiconf_id": {$uiconfid},
   "flashvars": {},
   "entry_id": "{$entry->id}"
 });
@@ -948,5 +950,45 @@ EOD;
 
     return $data;
   }
+
+  /**
+   * Test the kaltura api connection with configured url and credentials.
+   * @return bool true on success.
+   */
+  public function checkKalturaAPIConnection() {
+    try {
+      $confid = $this->getUIConfId();
+      return true;
+    } catch (Exception $error) {
+      return false;
+    }
+  }
+
+  /**
+   * Checks if the config value uiconf_id is actually a uiconf in kaltura, and
+   * in this case returns it. Otherwise it returns the first available uiconfid
+   * in kaltura.
+   * @return string an usable uiconfid.
+   */
+  public function getUIConfId() {
+    static $uiconfid = null; // Static cache.
+    if ($uiconfid == null) {
+      $configured = get_config('tool_kaltura_migration', 'uiconf_id');
+      $api = new tool_kaltura_migration_api($this->logger);
+      $uiconfs = $api->getUiConfs();
+      foreach ($uiconfs as $uiconf) {
+        if ($uiconf->id == $configured) {
+          $uiconfid = $configured;
+          break;
+        }
+      }
+      if ($uiconfid == null && count($uiconfs) > 0) {
+        $uiconfid = $uiconfs[0]->id;
+      }
+    }
+    return $uiconfid;
+  }
+
+
 
 }

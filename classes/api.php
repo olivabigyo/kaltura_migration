@@ -235,4 +235,13 @@ class tool_kaltura_migration_api {
 
     }
   }
+
+  /**
+   * Fetches the list of uiconf objects from kaltura api service.
+   * @return array of uiconf objects.
+   */
+  public function getUiConfs() {
+    $result = $this->client->uiConf->listAction(null, null);
+    return $result->objects;
+  }
 }
