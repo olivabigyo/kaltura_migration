@@ -60,5 +60,9 @@ $string['modulestocoursemedia'] = 'Move all content from SwitchCast modules to t
 $string['logs'] = 'Download logs';
 $string['downloadurls'] = 'Download video urls';
 $string['downloadlogs'] = 'Download execution logs';
+$string['uiconf_id'] = 'UI Conf ID';
+$string['uiconf_id_description'] = 'References the player configuration. To get the UI Conf ID login to KMC, go to Studio > Universal Studio and search for Player ID.';
+$string['nokalturaapiconnection'] = 'Could not connect to Kaltura API. Check the url, secret and partner id config settings at "Kaltura Migration Settings" page before starting the migration.';
+$string['nouiconfid'] = 'UI Conf ID (Player id) not configured or missing. Using id {$a} by default. It is recommended to set a proven player configuration at "Kaltura Migration Settings" page before starting the migration.';
 
 

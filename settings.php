@@ -45,6 +45,12 @@ if ($hassiteconfig) {
     '',
     $api_url, PARAM_RAW_TRIMMED));
 
+    $uiconf_id = '';
+    $settings->add(new admin_setting_configtext('tool_kaltura_migration/uiconf_id',
+    new lang_string('uiconf_id', 'tool_kaltura_migration'),
+    new lang_string('uiconf_id_description', 'tool_kaltura_migration'),
+    '', PARAM_RAW_TRIMMED));
+
     $ADMIN->add('tools', $settings);
 
     $ADMIN->add('tools', new admin_externalpage('tool_kaltura_migration', get_string('pluginname', 'tool_kaltura_migration'), $CFG->wwwroot.'/'.$CFG->admin.'/tool/kaltura_migration/index.php', 'moodle/site:config'));

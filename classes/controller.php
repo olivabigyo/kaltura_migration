@@ -949,4 +949,44 @@ EOD;
     return $data;
   }
 
+  /**
+   * Test the kaltura api connection with configured url and credentials.
+   * @return bool true on success.
+   */
+  public function checkKalturaAPIConnection() {
+    try {
+      $api = new tool_kaltura_migration_api($this->logger);
+      return true;
+    } catch (Exception $error) {
+      return false;
+    }
+  }
+
+  /**
+   * Checks if the config value uiconf_id is actually a uiconf in kaltura, and
+   * in this case returns it. Otherwise it returns the first available uiconfid
+   * in kaltura.
+   * @return string an usable uiconfid.
+   */
+  public function getUIConfId() {
+    static $uiconfid = null; // Static cache.
+    if ($uiconfid == null) {
+      $configured = get_config('uiconf_id', 'tool_kaltura_migration');
+      $api = new tool_kaltura_migration_api($this->logger);
+      $uiconfs = $api->getUiConfs();
+      foreach ($uiconfs as $uiconf) {
+        if ($uiconf->id == $configured) {
+          $uiconfid = $configured;
+          break;
+        }
+      }
+      if ($uiconfid == null && count($uiconfs) > 0) {
+        $uiconfid = $uiconfs[0]->id;
+      }
+    }
+    return $uiconfid;
+  }
+
+
+
 }

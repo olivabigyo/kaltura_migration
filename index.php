@@ -28,6 +28,10 @@ require_once('../../../config.php');
 require_once($CFG->dirroot.'/course/lib.php');
 require_once($CFG->libdir.'/adminlib.php');
 
+// Increase server limits for this migration script.
+core_php_time_limit::raise();
+raise_memory_limit(MEMORY_EXTRA);
+
 admin_externalpage_setup('tool_kaltura_migration');
 
 $migration = new tool_kaltura_migration_controller();
@@ -88,6 +92,12 @@ echo $OUTPUT->notification(get_string('excludedtables', 'tool_kaltura_migration'
 echo $OUTPUT->notification(get_string('backupwarning', 'tool_kaltura_migration'), \core\output\notification::NOTIFY_WARNING);
 if (!$migration->getVideoGalleryLTIType()) {
   echo $OUTPUT->notification(get_string('nomediagallery', 'tool_kaltura_migration'), \core\output\notification::NOTIFY_ERROR);
+}
+if (!$migration->checkKalturaAPIConnection()) {
+  echo $OUTPUT->notification(get_string('nokalturaapiconnection', 'tool_kaltura_migration'), \core\output\notification::NOTIFY_ERROR);
+} else if (!get_config('uiconf_id', 'tool_kaltura_migration')) {
+  $uiconfid = $migration->getUIConfId();
+  echo $OUTPUT->notification(get_string('nouiconfid', 'tool_kaltura_migration', $uiconfid), \core\output\notification::NOTIFY_WARNING);
 }
 echo $OUTPUT->box_end();
 
