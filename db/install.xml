@@ -10,7 +10,7 @@
         <FIELD NAME="tblname" TYPE="char" LENGTH="30" NOTNULL="true" SEQUENCE="false" COMMENT="Table name"/>
         <FIELD NAME="colname" TYPE="char" LENGTH="128" NOTNULL="true" SEQUENCE="false" COMMENT="Column name"/>
         <FIELD NAME="resid" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="Record id" />
-        <FIELD NAME="url" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="Video URL"/>
+        <FIELD NAME="url" TYPE="text" NOTNULL="true" SEQUENCE="false" COMMENT="Video URL"/>
         <FIELD NAME="replaced" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Already replaced?"/>
         <FIELD NAME="course" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Course id or -1 if not applicable or unknown"/>
       </FIELDS>
