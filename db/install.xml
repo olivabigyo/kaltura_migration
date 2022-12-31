@@ -19,7 +19,6 @@
       </KEYS>
       <INDEXES>
         <INDEX NAME="video-location" UNIQUE="false" FIELDS="tblname, colname, resid"/>
-        <INDEX NAME="video-url" UNIQUE="false" FIELDS="url"/>
       </INDEXES>
     </TABLE>
     <TABLE NAME="tool_kaltura_migration_logs" COMMENT="Table for execution logs.">
