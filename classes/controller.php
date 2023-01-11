@@ -84,7 +84,7 @@ class tool_kaltura_migration_controller {
     if ($this->tableHasId($table)) {
       $result = $DB->get_records_select_menu($table, $where, $params, '', 'id, ' . $column->name);
     } else {
-      $result = $DB->get_fieldset_select($table, $column->name, $where);
+      $result = $DB->get_fieldset_select($table, $column->name, $where, $params);
     }
     return $result;
   }
