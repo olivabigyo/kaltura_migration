@@ -377,6 +377,7 @@ class tool_kaltura_migration_controller {
   function replaceVideo($table, $column, $id, $url, $entry, $test = false) {
     $iframe_reg = '/<iframe\s[^>]*src\s*=\s*"' . preg_quote($url, "/") . '"[^>]*width="(\d+)"\s+height="(\d+)"[^>]*><\/iframe>/';
     $iframe2_reg = '/<iframe\s[^>]*width="(\d+)"\s+height="(\d+)"[^>]*src\s*=\s*"' . preg_quote($url, "/") . '"[^>]*><\/iframe>/';
+    $iframe3_reg = '/<iframe\s[^>]*src\s*=\s*"' . preg_quote($url, "/") . '"[^>]*><\/iframe>/';
     $video_reg = '/<video\s[^>]*width="(\d+)"\s+height="(\d+)"[^>]*><source\ssrc="'. preg_quote($url, "/") .'">[^<]*<\/video>/';
     $video2_reg = '/<video\s[^>]*><source\s[^>]*src="' . preg_quote($url, "/") . '"[^>]*>.*?<\/video>/';
 
@@ -386,9 +387,19 @@ class tool_kaltura_migration_controller {
       $this->logger->content($content);
     }
     // replace video embeddings
-    $content = preg_replace_callback([$iframe_reg, $iframe2_reg, $video_reg, $video2_reg], function($matches) use ($entry) {
-      $width = count($matches) > 2 ? $matches[1] : null;
-      $height = count($matches) > 2 ? $matches[2] : null;
+    $content = preg_replace_callback([$iframe_reg, $iframe2_reg, $iframe3_reg, $video_reg, $video2_reg], function($matches) use ($entry) {
+      if (count($matches) > 2) {
+        $width = $matches[1];
+        $height = $matches[2];
+      } else {
+        // If no defined size, we use the aspect ratio from the video metadata
+        // provided by the kaltura API and a width that is the intrinsic video
+        // width (if less than 608), or 608 otherwise. The 608 is an arbitrary
+        // constat that is a default value for the kaltura player and that's why
+        // we use it.
+        $width = min($entry->width, 608);
+        $height = round($entry->height * $width / $entry->width);
+      }
       return $this->getKalturaEmbedCode($entry, $width, $height);
     }, $content);
     // replace video links and other references (not embeddings)
@@ -405,11 +416,8 @@ class tool_kaltura_migration_controller {
     return $entry->dataUrl;
   }
 
-  function getKalturaEmbedCode($entry, $width = null, $height = null) {
-    $style  = '';
-    if ($width !== null && $height !== null) {
-      $style = "style=\"width: {$width}px; height: {$height}px;\"";
-    }
+  function getKalturaEmbedCode($entry, $width, $height) {
+    $style = "style=\"width: {$width}px; height: {$height}px;\"";
     $hash = mt_rand();
     $uiconfid = $this->getUIConfId();
     $partnerid = get_config('tool_kaltura_migration', 'partner_id');
