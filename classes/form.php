@@ -42,6 +42,7 @@ class tool_kaltura_migration_form extends moodleform
         $op = $this->_customdata['op'];
         $course = $this->_customdata['course'];
         $modulestocoursemedia = $this->_customdata['modulestocoursemedia'];
+        $hasvideogallerylti = $this->_customdata['hasvideogallerylti'];
 
         $hasresults = $numresults > 0;
         $hasreplacements = $numresults > $numreplaced;
@@ -86,10 +87,14 @@ class tool_kaltura_migration_form extends moodleform
 
             $courses = $this->getReplaceModulesCourses();
             $mform->addElement('select', 'coursesreplacemodules', get_string('course'), $courses);
-
-            $mform->addElement('radio', 'modulestocoursemedia', '', get_string('modulestolti', 'tool_kaltura_migration'), 0);
+            $modulestocoursemediaparams = array();
+            if (!$hasvideogallerylti) {
+                $modulestocoursemediaparams['disabled'] = 'disabled';
+            }
+            $mform->addElement('radio', 'modulestocoursemedia', '', get_string('modulestolti', 'tool_kaltura_migration'), 0, $modulestocoursemediaparams);
             $mform->addElement('radio', 'modulestocoursemedia', '', get_string('modulestocoursemedia', 'tool_kaltura_migration'), 1);
-            $mform->setDefault('modulestocoursemedia', 0);
+            $mform->setDefault('modulestocoursemedia', $hasvideogallerylti ? 0 : 1);
+
 
             $buttonarray[] = $mform->createElement('submit', 'optestreplacemodules', get_string('testreplacemodules', 'tool_kaltura_migration'));
             if ($op == 'optestreplacemodules') {

@@ -94,8 +94,9 @@ echo $OUTPUT->heading(get_string('pageheader', 'tool_kaltura_migration'));
 echo $OUTPUT->box_start();
 echo $OUTPUT->notification(get_string('excludedtables', 'tool_kaltura_migration'), \core\output\notification::NOTIFY_INFO);
 echo $OUTPUT->notification(get_string('backupwarning', 'tool_kaltura_migration'), \core\output\notification::NOTIFY_WARNING);
-if (!$migration->getVideoGalleryLTIType()) {
-  echo $OUTPUT->notification(get_string('nomediagallery', 'tool_kaltura_migration'), \core\output\notification::NOTIFY_ERROR);
+$hasvideogallerylti = !empty($migration->getVideoGalleryLTIType());
+if (!$hasvideogallerylti) {
+  echo $OUTPUT->notification(get_string('nomediagallery', 'tool_kaltura_migration'), \core\output\notification::NOTIFY_WARNING);
 }
 if (!$migration->checkKalturaAPIConnection()) {
   echo $OUTPUT->notification(get_string('nokalturaapiconnection', 'tool_kaltura_migration'), \core\output\notification::NOTIFY_ERROR);
@@ -135,7 +136,8 @@ $form = new tool_kaltura_migration_form(null, [
   'numerrors' => is_array($errors) ? count($errors) : 0,
   'op' => $op,
   'course' => $course,
-  'modulestocoursemedia' => $modulestocoursemedia
+  'modulestocoursemedia' => $modulestocoursemedia,
+  'hasvideogallerylti' => $hasvideogallerylti,
 ]);
 
 // Display form. It will depend on the current status.
