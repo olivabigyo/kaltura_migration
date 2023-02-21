@@ -35,6 +35,7 @@ $string['deleterecords'] = "Delete records";
 $string['replacevideos'] = "Replace videos";
 $string['testreplacevideos'] = "Test replace videos";
 $string['replacednvideos'] = 'Replaced {$a} videos.';
+$string['replacednchannels'] = 'Replaced {$a} channels.';
 $string['testreplacemodules'] = 'Test replace SwitchCast activities';
 $string['replacemodules'] = 'Replace SwitchCast activities';
 $string['migrateembeddings'] = 'Migrate video embeddings and links';
@@ -64,5 +65,5 @@ $string['uiconf_id'] = 'UI Conf ID';
 $string['uiconf_id_description'] = 'References the player configuration. To get the UI Conf ID login to KMC, go to Studio > Universal Studio and search for Player ID.';
 $string['nokalturaapiconnection'] = 'Could not connect to Kaltura API. Check the url, secret and partner id config settings at "Kaltura Migration Settings" page before starting the migration.';
 $string['nouiconfid'] = 'UI Conf ID (Player id) not configured or missing. Using id {$a} by default. It is recommended to set a proven player configuration at "Kaltura Migration Settings" page before starting the migration.';
-
-
+$string['mediaspace_url'] = 'MediaSpace URL';
+$string['mediaspace_url_description'] = 'The MediaSpace URL for your organization. This is used to migrate links to channels in you content.';
