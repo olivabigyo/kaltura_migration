@@ -336,6 +336,7 @@ class tool_kaltura_migration_controller {
 
 
     $replaced = 0;
+    $channels = 0;
     foreach ($records as $record) {
       $table = $record->tblname;
       $id = $record->resid;
@@ -347,7 +348,21 @@ class tool_kaltura_migration_controller {
         $referenceIds = $this->getReferenceIdsFromUrl($url);
         if (!$referenceIds) {
           $this->logger->error('Could not get refid from url ' . $url);
+        } else if (strpos($url, '/channel/') !== FALSE) {
+          // Replace channel links.
+          $category = $api->getCategoryByReferenceIds($referenceIds);
+          if (!$category) {
+             $this->logger->error('Could not get Kaltura channel category with refid ' . implode(',', $referenceIds));
+          } else if ($this->replaceChannel($table, $column, $id, $url, $category, $test)) {
+            $record->replaced = true;
+            $DB->update_record('tool_kaltura_migration_urls', $record);
+            $channels++;
+            $this->logger->info('Channel replaced in table ' . $table . ' column ' . $column . ' record id ' . $id . ' with refid ' . implode(',', $referenceIds));
+          } else if (!$test) {
+            $this->logger->error('Could not replace html content in table ' . $table . ' column ' . $column . ' record id ' . $id);
+          }
         } else {
+          // Replace media embeds or links.
           $entry = $api->getMediaByReferenceIds($referenceIds);
           if (!$entry) {
             $this->logger->error('Could not get Kaltura media with refid ' . implode(',', $referenceIds));
@@ -366,9 +381,40 @@ class tool_kaltura_migration_controller {
     if (!$test) {
       global $OUTPUT;
       echo $OUTPUT->notification(get_string('replacednvideos', 'tool_kaltura_migration', $replaced), \core\output\notification::NOTIFY_SUCCESS);
+      if ($channels > 0) {
+        echo $OUTPUT->notification(get_string('replacednchannels', 'tool_kaltura_migration', $channels), \core\output\notification::NOTIFY_SUCCESS);
+      }
     }
     $errors = $this->logger->getErrors();
     return count($errors) == 0 ? true : $errors;
+  }
+
+  /**
+   * Replaces a single channel link from a DB text field.
+   */
+  function replaceChannel($table, $column, $id, $url, $category, $test = false) {
+    global $DB;
+    $content = $DB->get_field($table, $column, ['id' => $id]);
+    if ($test) {
+      $this->logger->content($content);
+    }
+    $content = str_replace($url, $this->getKalturaChannelUrl($category), $content);
+    if ($test) {
+      $this->logger->content($content);
+      return false;
+    } else {
+      return $DB->set_field($table, $column, $content, ['id' => $id]);
+    }
+  }
+
+  /**
+   * Builds the MediaSpace URL for a channel category.
+   */
+  function getKalturaChannelUrl($category) {
+    $base_url = get_config('tool_kaltura_migration', 'mediaspace_url');
+    $base_url = rtrim($base_url, '/'); // Just in user added the trailing slash.
+    $url = $base_url . '/channel/' . urlencode($category->name) . '/' . urlencode($category->id);
+    return $url;
   }
 
   /**

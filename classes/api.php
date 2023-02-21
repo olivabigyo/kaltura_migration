@@ -70,6 +70,18 @@ class tool_kaltura_migration_api {
     return $this->singleOrFalseResult($result);
   }
   /**
+   * @param array $referenceIds
+   */
+  public function getCategoryByReferenceIds($referenceIds) {
+    foreach ($referenceIds as $referenceId) {
+      $entries = $this->getCategoriesByReferenceId($referenceId);
+      if (!empty($entries)) {
+        return $entries[0];
+      }
+    }
+    return false;
+  }
+  /**
    * Fetch Kaltura Category Given its reference id.
    * @param string $referenceId.
    * @return stdClass|bool category record or false if no or more than one category found.
