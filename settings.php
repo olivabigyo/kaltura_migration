@@ -51,6 +51,12 @@ if ($hassiteconfig) {
     new lang_string('uiconf_id_description', 'tool_kaltura_migration'),
     '', PARAM_RAW_TRIMMED));
 
+    $mediaspace_url = 'https://mediaspace.cast.switch.ch';
+    $settings->add(new admin_setting_configtext('tool_kaltura_migration/mediaspace_url',
+    new lang_string('mediaspace_url', 'tool_kaltura_migration'),
+    new lang_string('mediaspace_url_description', 'tool_kaltura_migration'),
+    $mediaspace_url, PARAM_RAW_TRIMMED));
+
     $ADMIN->add('tools', $settings);
 
     $ADMIN->add('tools', new admin_externalpage('tool_kaltura_migration', get_string('pluginname', 'tool_kaltura_migration'), $CFG->wwwroot.'/'.$CFG->admin.'/tool/kaltura_migration/index.php', 'moodle/site:config'));
