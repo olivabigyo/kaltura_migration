@@ -76,7 +76,11 @@ class tool_kaltura_migration_logger {
     echo '<tr><td>' . $this->currentEntry . ($name ? '(' . $name . ')' : '') . '</td><td>';
   }
   public function content($content) {
-    echo '<td>' . $content . '</td>';
+    echo $content . '</td><td>';
+  }
+  public function codeContent($content) {
+    $content = '<div style="white-space: pre-wrap; font-family: monospace; max-width: 500px; max-height: 500px; overflow: scroll;">' . $content . "</div>";
+    $this->content($content);
   }
   /**
    * @param int $level Use level constans from this class.

@@ -72,8 +72,9 @@ class tool_kaltura_migration_controller {
     $params = [];
     $where = '';
     foreach ($this->hosts as $host) {
-      // That's the longest string that can used from the available info.
-      $pattern = '://' . $host . '/';
+      // That's the longest string that can used from the available info. Note that
+      // we want to catch either http and https and unescaped and escaped forward slashes.
+      $pattern = '/' . $host;
       if ($where != '') {
         $where .= ' OR';
       }
@@ -86,6 +87,13 @@ class tool_kaltura_migration_controller {
     } else {
       $result = $DB->get_fieldset_select($table, $column->name, $where, $params);
     }
+    if ($this->isJsonField($table, $column->name)) {
+      $result = array_map(function($content) {
+        // Unescape forward slashes.
+        return str_replace('\\/', '/', $content);
+      }, $result);
+    }
+
     return $result;
   }
   /**
@@ -96,6 +104,20 @@ class tool_kaltura_migration_controller {
     global $DB;
     $columns = $DB->get_columns($table);
     return isset($columns['id']);
+  }
+
+  /**
+   * @param string $table. The table name.
+   * @param string $column. The column name.
+   * @return boolean true if the field contains json-encoded data.
+   */
+  protected function isJsonField($table, $column) {
+    // tables and fields with json-encoded content.
+    $json = [
+      'hvp' => ['json_content', 'filtered'],
+      'h5p' => ['jsoncontent', 'filtered'],
+    ];
+    return isset($json[$table]) && in_array($column, $json[$table]);
   }
   /**
    * @param string text The text to extract the video urls from.
@@ -108,7 +130,9 @@ class tool_kaltura_migration_controller {
     $urls = [];
     if (preg_match_all($pattern, $text, $matches)) {
       foreach ($matches[0] as $url) {
-        $urls[] = $url;
+        if (!in_array($url, $urls)) {
+          $urls[] = $url;
+        }
       }
     }
     return $urls;
@@ -421,37 +445,58 @@ class tool_kaltura_migration_controller {
    * Replaces a single video embedding from a DB text field.
    */
   function replaceVideo($table, $column, $id, $url, $entry, $test = false) {
-    $iframe_reg = '/<iframe\s[^>]*src\s*=\s*"' . preg_quote($url, "/") . '"[^>]*width="(\d+)"\s+height="(\d+)"[^>]*><\/iframe>/';
-    $iframe2_reg = '/<iframe\s[^>]*width="(\d+)"\s+height="(\d+)"[^>]*src\s*=\s*"' . preg_quote($url, "/") . '"[^>]*><\/iframe>/';
-    $iframe3_reg = '/<iframe\s[^>]*src\s*=\s*"' . preg_quote($url, "/") . '"[^>]*><\/iframe>/';
-    $video_reg = '/<video\s[^>]*width="(\d+)"\s+height="(\d+)"[^>]*><source\ssrc="'. preg_quote($url, "/") .'">[^<]*<\/video>/';
-    $video2_reg = '/<video\s[^>]*><source\s[^>]*src="' . preg_quote($url, "/") . '"[^>]*>.*?<\/video>/';
+    $is_json = $this->isJsonField($table, $column);
 
     global $DB;
     $content = $DB->get_field($table, $column, ['id' => $id]);
     if ($test) {
-      $this->logger->content($content);
-    }
-    // replace video embeddings
-    $content = preg_replace_callback([$iframe_reg, $iframe2_reg, $iframe3_reg, $video_reg, $video2_reg], function($matches) use ($entry) {
-      if (count($matches) > 2) {
-        $width = $matches[1];
-        $height = $matches[2];
+      if ($is_json) {
+        $this->logger->codeContent($content);
       } else {
-        // If no defined size, we use the aspect ratio from the video metadata
-        // provided by the kaltura API and a width that is the intrinsic video
-        // width (if less than 608), or 608 otherwise. The 608 is an arbitrary
-        // constat that is a default value for the kaltura player and that's why
-        // we use it.
-        $width = min($entry->width, 608);
-        $height = round($entry->height * $width / $entry->width);
+        $this->logger->content($content);
       }
-      return $this->getKalturaEmbedCode($entry, $width, $height);
-    }, $content);
-    // replace video links and other references (not embeddings)
-    $content = str_replace($url, $this->getKalturaVideoUrl($entry), $content);
+    }
+    if (!$is_json) {
+      $iframe_reg = '/<iframe\s[^>]*src\s*=\s*"' . preg_quote($url, "/") . '"[^>]*width="(\d+)"\s+height="(\d+)"[^>]*><\/iframe>/';
+      $iframe2_reg = '/<iframe\s[^>]*width="(\d+)"\s+height="(\d+)"[^>]*src\s*=\s*"' . preg_quote($url, "/") . '"[^>]*><\/iframe>/';
+      $iframe3_reg = '/<iframe\s[^>]*src\s*=\s*"' . preg_quote($url, "/") . '"[^>]*><\/iframe>/';
+      $video_reg = '/<video\s[^>]*width="(\d+)"\s+height="(\d+)"[^>]*><source\ssrc="'. preg_quote($url, "/") .'">[^<]*<\/video>/';
+      $video2_reg = '/<video\s[^>]*><source\s[^>]*src="' . preg_quote($url, "/") . '"[^>]*>.*?<\/video>/';
+
+
+      // Replace video embeddings
+      $content = preg_replace_callback([$iframe_reg, $iframe2_reg, $iframe3_reg, $video_reg, $video2_reg], function($matches) use ($entry) {
+        if (count($matches) > 2) {
+          $width = $matches[1];
+          $height = $matches[2];
+        } else {
+          // If no defined size, we use the aspect ratio from the video metadata
+          // provided by the kaltura API and a width that is the intrinsic video
+          // width (if less than 608), or 608 otherwise. The 608 is an arbitrary
+          // constat that is a default value for the kaltura player and that's why
+          // we use it.
+          $width = min($entry->width, 608);
+          $height = round($entry->height * $width / $entry->width);
+        }
+        return $this->getKalturaEmbedCode($entry, $width, $height);
+      }, $content);
+    }
+    // Replace video links and other references (not embeddings)
+    $kaltura_url = $this->getKalturaVideoUrl($entry);
+    $content = str_replace($url, $kaltura_url, $content);
+    // Also try with escaped slashes for json fields.
+    if ($is_json) {
+      $url = str_replace('/', '\\/', $url);
+      $kaltura_url = str_replace('/', '\\/', $kaltura_url);
+      $content = str_replace($url, $kaltura_url, $content);
+    }
+
     if ($test) {
-      $this->logger->content($content);
+      if ($is_json) {
+        $this->logger->codeContent($content);
+      } else {
+        $this->logger->content($content);
+      }
       return false;
     } else {
       return $DB->set_field($table, $column, $content, ['id' => $id]);
