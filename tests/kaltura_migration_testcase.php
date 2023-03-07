@@ -38,9 +38,8 @@ class kaltura_migration_testcase extends advanced_testcase {
       $this->assertEquals($urls[0], 'https://tube.switch.ch/video/1234567890?embed=true');
       $this->assertEquals($urls[1], 'http://cast.switch.ch/casts/123');
       $this->assertEquals($urls[2], 'https://download.cast.switch.ch/ethz-ch/switchcast-player/a6d933d9-8513-4a18-8eea-d36ebb2f1357/463fd0cc-0b82-4aba-9d5c-840667b4e7fd/Learning_goals.mp4');
-      $this->assertEquals($urls[3], 'https://tube.switch.ch/channels/bF7N6sNLse',
-      $this->assertEquals($urls[4], 'https://tube.switch.ch/external/u1KUHLZp7h')
-      );
+      $this->assertEquals($urls[3], 'https://tube.switch.ch/channels/bF7N6sNLse');
+      $this->assertEquals($urls[4], 'https://tube.switch.ch/external/u1KUHLZp7h');
    }
    public function test_extract_refids() {
       $urls = [
