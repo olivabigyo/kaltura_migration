@@ -348,7 +348,7 @@ class tool_kaltura_migration_controller {
         $referenceIds = $this->getReferenceIdsFromUrl($url);
         if (!$referenceIds) {
           $this->logger->error('Could not get refid from url ' . $url);
-        } else if (strpos($url, '/channel/') !== FALSE) {
+        } else if ((strpos($url, '/channels/') !== FALSE) || (strpos($url, '/channel/') !== FALSE)) {
           // Replace channel links.
           $category = $api->getCategoryByReferenceIds($referenceIds);
           if (!$category) {
