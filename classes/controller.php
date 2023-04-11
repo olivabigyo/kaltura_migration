@@ -437,7 +437,8 @@ class tool_kaltura_migration_controller {
   function getKalturaChannelUrl($category) {
     $base_url = get_config('tool_kaltura_migration', 'mediaspace_url');
     $base_url = rtrim($base_url, '/'); // Just in user added the trailing slash.
-    $url = $base_url . '/channel/' . urlencode($category->name) . '/' . urlencode($category->id);
+    $name = str_replace("/", "_", $category->name);
+    $url = $base_url . '/channel/' . urlencode($name) . '/' . urlencode($category->id);
     return $url;
   }
 
