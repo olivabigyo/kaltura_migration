@@ -504,16 +504,28 @@ class tool_kaltura_migration_controller {
   }
 
   function getKalturaVideoUrl($entry) {
-    return $entry->dataUrl;
+    // See: https://help.switch.ch/cast/faq/#collapse-f96b010a-5682-11ed-9939-5254009dc73c-2
+    // See also: https://knowledge.kaltura.com/help/how-to-download-a-raw-file
+    $url = rtrim(get_config('tool_kaltura_migration', 'api_url'), ' /');
+    $partnerid = get_config('tool_kaltura_migration', 'partner_id');
+    $entryid = $entry->id;
+
+    // 6 and 7 are flavors for high quality videos ready to be played by browser.
+    // Other flavors (including base flavor 0) may return lower quality videos or
+    // uncommon formats.
+    $flavorParamIds = "6,7";
+
+    return "${url}/p/${partnerid}/sp/${partnerid}00/playManifest/entryId/${entryid}/format/url/protocol/https/flavorParamIds/${flavorParamIds}/video.mp4";
   }
 
   function getKalturaEmbedCode($entry, $width, $height) {
     $style = "style=\"width: {$width}px; height: {$height}px;\"";
+    $url = get_config('tool_kaltura_migration', 'api_url');
     $hash = mt_rand();
     $uiconfid = $this->getUIConfId();
     $partnerid = get_config('tool_kaltura_migration', 'partner_id');
     return <<<EOD
-<script src="https://api.cast.switch.ch/p/${partnerid}/sp/${partnerid}00/embedIframeJs/uiconf_id/{$uiconfid}/partner_id/{$partnerid}"></script>
+<script src="${url}/p/${partnerid}/sp/${partnerid}00/embedIframeJs/uiconf_id/{$uiconfid}/partner_id/{$partnerid}"></script>
 <div id="kaltura_player_{$hash}" {$style}></div>
 <script>
 kWidget.embed({
