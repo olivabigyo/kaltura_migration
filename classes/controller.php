@@ -147,8 +147,11 @@ class tool_kaltura_migration_controller {
    * @return int the course id related to the record $id from table $table, or -1
    * if unknown or not applicable.
    */
-  protected function getRecordCourse($table, $columns, $id) {
+  protected function getRecordCourse($table, $id) {
     global $DB;
+    // We have asked for table columns already but moodle caches the response so
+    // it is not really useful to propagate the result here.
+    $columns = $DB->get_columns($table);
     if (!isset($columns['id'])) {
       return -1;
     }
@@ -201,10 +204,10 @@ class tool_kaltura_migration_controller {
     }
   }
   /**
-   * Search video URLs in the whole database.
-   *
-  */
-  protected function search() {
+   * @param callable $callback is a function taking two parameters ($table, $column)
+   * to be called for each text column in the database.
+   */
+  protected function foreachDBColumn($callback) {
     global $DB;
     if (!$tables = $DB->get_tables()) {    // No tables yet at all.
       return false;
@@ -224,40 +227,57 @@ class tool_kaltura_migration_controller {
       if ($columns = $DB->get_columns($table)) {
         foreach ($columns as $column) {
           // Skip non-text columns
-            if ($column->meta_type != 'X' && $column->meta_type != 'C') {
+          if ($column->meta_type != 'X' && $column->meta_type != 'C') {
             continue;
           }
           // Skip some other columns.
           if (!$this->shouldSearch($table, $column->name)) {
             continue;
           }
-          // Get matching fields.
-          $result = $this->search_table_column($table, $column);
-          // Extract urls and prepare records for db insertion.
-          $records = [];
-          foreach ($result as $id => $field) {
-            $urls  = $this->extractUrls($field);
-            $course = $this->getRecordCourse($table, $columns, $id);
-
-            foreach ($urls as $url) {
-              $records[] = array(
-                'tblname' => $table,
-                'colname' => $column->name,
-                'resid' => $id,
-                'url' => $url,
-                'replaced' => false,
-                'course' => $course
-              );
-            }
-          }
-          // Save results into DB.
-          $DB->insert_records('tool_kaltura_migration_urls', $records);
+          // Call provided callback
+          $callback($table, $column);
         }
       }
       $progress++;
       $this->progress->progress($progress);
     }
     $this->progress->end_progress();
+  }
+
+  /**
+   * Search video URLs in the whole database.
+   */
+  protected function search() {
+    // Passing directly $this->searchCallback is not allowed, but an anonymous
+    /// function is.
+    $this->foreachDBColumn(function($table, $column) {
+      $this->searchCallback($table, $column);
+    });
+  }
+
+  protected function searchCallback($table, $column) {
+    global $DB;
+    // Get matching fields.
+    $result = $this->search_table_column($table, $column);
+    // Extract urls and prepare records for db insertion.
+    $records = [];
+    foreach ($result as $id => $field) {
+      $urls  = $this->extractUrls($field);
+      $course = $this->getRecordCourse($table, $id);
+
+      foreach ($urls as $url) {
+        $records[] = array(
+          'tblname' => $table,
+          'colname' => $column->name,
+          'resid' => $id,
+          'url' => $url,
+          'replaced' => false,
+          'course' => $course
+        );
+      }
+    }
+    // Save results into DB.
+    $DB->insert_records('tool_kaltura_migration_urls', $records);
   }
 
   /**
@@ -437,7 +457,8 @@ class tool_kaltura_migration_controller {
   function getKalturaChannelUrl($category) {
     $base_url = get_config('tool_kaltura_migration', 'mediaspace_url');
     $base_url = rtrim($base_url, '/'); // Just in user added the trailing slash.
-    $url = $base_url . '/channel/' . urlencode($category->name) . '/' . urlencode($category->id);
+    $name = str_replace("/", "_", $category->name);
+    $url = $base_url . '/channel/' . urlencode($name) . '/' . urlencode($category->id);
     return $url;
   }
 
@@ -504,16 +525,28 @@ class tool_kaltura_migration_controller {
   }
 
   function getKalturaVideoUrl($entry) {
-    return $entry->dataUrl;
+    // See: https://help.switch.ch/cast/faq/#collapse-f96b010a-5682-11ed-9939-5254009dc73c-2
+    // See also: https://knowledge.kaltura.com/help/how-to-download-a-raw-file
+    $url = rtrim(get_config('tool_kaltura_migration', 'api_url'), ' /');
+    $partnerid = get_config('tool_kaltura_migration', 'partner_id');
+    $entryid = $entry->id;
+
+    // 6 and 7 are flavors for high quality videos ready to be played by browser.
+    // Other flavors (including base flavor 0) may return lower quality videos or
+    // uncommon formats.
+    $flavorParamIds = "6,7";
+
+    return "${url}/p/${partnerid}/sp/${partnerid}00/playManifest/entryId/${entryid}/format/url/protocol/https/flavorParamIds/${flavorParamIds}/video.mp4";
   }
 
   function getKalturaEmbedCode($entry, $width, $height) {
     $style = "style=\"width: {$width}px; height: {$height}px;\"";
+    $url = rtrim(get_config('tool_kaltura_migration', 'api_url'), ' /');
     $hash = mt_rand();
     $uiconfid = $this->getUIConfId();
     $partnerid = get_config('tool_kaltura_migration', 'partner_id');
     return <<<EOD
-<script src="https://api.cast.switch.ch/p/${partnerid}/sp/${partnerid}00/embedIframeJs/uiconf_id/{$uiconfid}/partner_id/{$partnerid}"></script>
+<script src="${url}/p/${partnerid}/sp/${partnerid}00/embedIframeJs/uiconf_id/{$uiconfid}/partner_id/{$partnerid}"></script>
 <div id="kaltura_player_{$hash}" {$style}></div>
 <script>
 kWidget.embed({
@@ -1086,6 +1119,73 @@ EOD;
       }
     }
     return $uiconfid;
+  }
+
+  /**
+   * Run the "add flavors" script.
+   */
+  public function addFlavorsToKalturaUrls($progress, $test = false) {
+    // Configure class.
+    $this->progress = $progress;
+    $this->logger = new tool_kaltura_migration_logger();
+    $this->logger->start($test);
+    $suffix = $test ? ' in TEST mode' : '';
+    $this->logger->info("Starting process ${suffix}.");
+
+    $this->foreachDBColumn(function($table, $column) use ($test) {
+      $this->addFlavorsCallback($table, $column, $test);
+    });
+
+    $this->logger->info("Process end ${suffix}.");
+  }
+
+  protected function addFlavorsCallback($table, $column, $test) {
+    global $DB;
+    // Only handle tables with id (most of them!).
+    if (!$this->tableHasId($table)) {
+      return;
+    }
+    // We can't search for a more concrete string since slaches will be encoded
+    // in json columns.
+    $url = '/api.cast.switch.ch';
+    $pattern = '%' . $DB->sql_like_escape($url) . '%';
+
+    // Build where clause: (column LIKE %pattern%))
+    $colname = $DB->get_manager()->generator->getEncQuoted($column->name);
+    $where = $DB->sql_like($colname, '?');
+    $params = [$pattern];
+
+    $result = $DB->get_records_select_menu($table, $where, $params, '', 'id, ' . $column->name);
+
+    $isjson = $this->isJsonField($table, $column->name);
+
+    foreach ($result as $id => $content) {
+      if ($isjson) {
+        $content = str_replace('\\/', '/', $content);
+      }
+      $partnerid = get_config('tool_kaltura_migration', 'partner_id');
+      $pattern = "#(https://api.cast.switch.ch/p/${partnerid}/sp/${partnerid}00/playManifest/entryId/([a-zA-Z0-9_]+)/format/url/protocol/https)([^/]|$)#";
+
+      $newcontent = preg_replace_callback($pattern, function($matches) use ($test, $table, $id, $colname) {
+        $url = $matches[1];
+        $mediaid = $matches[2];
+        $prefix = $test ? '[TEST] ' : '';
+        $this->logger->info("${prefix}Added flavors to media $mediaid in $table $id ($colname).");
+        // Add the flavor parameter.
+        $url = "$url/flavorParamIds/6,7/video.mp4";
+        // Add the last character matched by pattern but not part of url.
+        $replace =  $url . substr($matches[0], strlen($matches[1]));
+        return $replace;
+      }, $content);
+
+      if (!$test && ($content != $newcontent)) {
+        if ($isjson) {
+          $newcontent = str_replace("/", "\\/", $newcontent);
+        }
+        $DB->set_field($table, $column->name, $newcontent, ['id' => $id]);
+      }
+    }
+
   }
 
 
