@@ -538,7 +538,7 @@ class tool_kaltura_migration_controller {
 
   function getKalturaEmbedCode($entry, $width, $height) {
     $style = "style=\"width: {$width}px; height: {$height}px;\"";
-    $url = get_config('tool_kaltura_migration', 'api_url');
+    $url = rtrim(get_config('tool_kaltura_migration', 'api_url'), ' /');
     $hash = mt_rand();
     $uiconfid = $this->getUIConfId();
     $partnerid = get_config('tool_kaltura_migration', 'partner_id');
