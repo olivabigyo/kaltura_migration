@@ -147,8 +147,11 @@ class tool_kaltura_migration_controller {
    * @return int the course id related to the record $id from table $table, or -1
    * if unknown or not applicable.
    */
-  protected function getRecordCourse($table, $columns, $id) {
+  protected function getRecordCourse($table, $id) {
     global $DB;
+    // We have asked for table columns already but moodle caches the response so
+    // it is not really useful to propagate the result here.
+    $columns = $DB->get_columns($table);
     if (!isset($columns['id'])) {
       return -1;
     }
@@ -260,7 +263,7 @@ class tool_kaltura_migration_controller {
     $records = [];
     foreach ($result as $id => $field) {
       $urls  = $this->extractUrls($field);
-      $course = $this->getRecordCourse($table, $columns, $id);
+      $course = $this->getRecordCourse($table, $id);
 
       foreach ($urls as $url) {
         $records[] = array(
