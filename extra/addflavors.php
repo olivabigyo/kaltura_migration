@@ -30,7 +30,6 @@ session_cache_expire(600);
 ini_set('opcache.force_restart_timeout', 600);
 
 require_once('../../../../config.php');
-require_once($CFG->dirroot.'/course/lib.php');
 require_once("$CFG->libdir/formslib.php");
 
 
