@@ -31,15 +31,28 @@ class kaltura_migration_testcase extends advanced_testcase {
          . 'http://cast.switch.ch/casts/123 http://cast.switch.com/casts/123' ."\n"
          . '<iframe src="https://download.cast.switch.ch/ethz-ch/switchcast-player/a6d933d9-8513-4a18-8eea-d36ebb2f1357/463fd0cc-0b82-4aba-9d5c-840667b4e7fd/Learning_goals.mp4"></iframe>' . "\n"
          .  'And finally look at the channel <a href="https://tube.switch.ch/channels/bF7N6sNLse">https://tube.switch.ch/channels/bF7N6sNLse</a>'
-         . 'And the external url: {"url": "https://tube.switch.ch/external/u1KUHLZp7h"}' ;
+         . 'And the external url: {"url": "https://tube.switch.ch/external/u1KUHLZp7h"}'
+         . 'Replaced embed:
+            <script src="https://api.cast.switch.ch/p/105/sp/10500/embedIframeJs/uiconf_id/123456/partner_id/105"></script>
+            <div id="kaltura_player_abcde" style=\"width: 800px; height: 640px;\"></div>
+            <script>
+            kWidget.embed({
+               "targetId": "kaltura_player_abcde",
+               "wid": "_105",
+               "uiconf_id": ,
+               "flashvars": {},
+               "entry_id": "0_2s7sbbm8"
+            });
+            </script>' ;
       $migration = new testable_kaltura_migration_controller();
       $urls = $migration->extractUrls($text);
-      $this->assertEquals(count($urls), 5);
+      $this->assertEquals(count($urls), 6);
       $this->assertEquals($urls[0], 'https://tube.switch.ch/video/1234567890?embed=true');
       $this->assertEquals($urls[1], 'http://cast.switch.ch/casts/123');
       $this->assertEquals($urls[2], 'https://download.cast.switch.ch/ethz-ch/switchcast-player/a6d933d9-8513-4a18-8eea-d36ebb2f1357/463fd0cc-0b82-4aba-9d5c-840667b4e7fd/Learning_goals.mp4');
       $this->assertEquals($urls[3], 'https://tube.switch.ch/channels/bF7N6sNLse');
       $this->assertEquals($urls[4], 'https://tube.switch.ch/external/u1KUHLZp7h');
+      $this->assertEquals($urls[5], 'https://api.cast.switch.ch/p/105/sp/10500/embedIframeJs/uiconf_id/123456/partner_id/105?entry_id=0_2s7sbbm8');
    }
    public function test_extract_refids() {
       $urls = [
@@ -47,14 +60,19 @@ class kaltura_migration_testcase extends advanced_testcase {
          'https://cast.switch.ch/casts/gjuqKSPL24',
          'https://download.cast.switch.ch/ethz-ch/switchcast-player/a6d933d9-8513-4a18-8eea-d36ebb2f1357/463fd0cc-0b82-4aba-9d5c-840667b4e7fd/Learning_goals.mp4',
          'https://tube.switch.ch/channels/bF7N6sNLse',
-         'https://tube.switch.ch/external/u1KUHLZp7h'
+         'https://tube.switch.ch/external/u1KUHLZp7h',
+         'https://api.cast.switch.ch/p/105/sp/10500/embedIframeJs/uiconf_id/123456/partner_id/105?entry_id=0_2s7sbbm8'
          ];
-      $expected = ['KIYKnxzVr3', 'gjuqKSPL24', 'a6d933d9-8513-4a18-8eea-d36ebb2f1357,463fd0cc-0b82-4aba-9d5c-840667b4e7fd', 'bF7N6sNLse', 'u1KUHLZp7h'];
+      $expected = ['KIYKnxzVr3', 'gjuqKSPL24', 'a6d933d9-8513-4a18-8eea-d36ebb2f1357,463fd0cc-0b82-4aba-9d5c-840667b4e7fd', 'bF7N6sNLse', 'u1KUHLZp7h', false];
+      $expected_id = [false, false, false, false, false, '0_2s7sbbm8'];
       $migration = new testable_kaltura_migration_controller();
       foreach($urls as $i => $url) {
          $refids = $migration->getReferenceIdsFromUrl($url);
          $refids = is_array($refids) ? implode(',', $refids) : false;
          $this->assertEquals($refids, $expected[$i]);
+
+         $entryid = $migration->getEntryIdFromUrl($url);
+         $this->assertEquals($entryid, $expected_id[$i]);
       }
    }
 }

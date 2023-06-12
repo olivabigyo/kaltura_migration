@@ -29,4 +29,7 @@ class testable_kaltura_migration_controller extends tool_kaltura_migration_contr
   public function getReferenceIdsFromUrl($url) {
     return parent::getReferenceIdsFromUrl($url);
   }
+  public function getEntryIdFromUrl($url) {
+    return parent::getEntryIdFromUrl($url);
+  }
 }

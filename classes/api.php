@@ -70,6 +70,16 @@ class tool_kaltura_migration_api {
     return $this->singleOrFalseResult($result);
   }
   /**
+   * @param string $entryId
+   */
+  public function getMediaByEntryId($entryId) {
+    $filter = new KalturaMediaEntryFilter();
+    $filter->idEqual = $entryId;
+    $pager = null;
+    $result = $this->client->media->listAction($filter, $pager);
+    return $this->singleOrFalseResult($result);
+  }
+  /**
    * @param array $referenceIds
    */
   public function getCategoryByReferenceIds($referenceIds) {

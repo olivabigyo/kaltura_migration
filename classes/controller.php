@@ -38,7 +38,7 @@ class tool_kaltura_migration_controller {
   /** @var \core\progress\base Progress bar for the current operation. */
   protected $progress;
   /** @var array video URL subsctrings to search for*/
-  protected $hosts = ['tube.switch.ch', 'cast.switch.ch', 'download.cast.switch.ch'];
+  protected $hosts;
 
   /** @var array map of category updates during a testing session. */
   protected $testing_updates = [];
@@ -46,6 +46,20 @@ class tool_kaltura_migration_controller {
   protected $testing_created_modules = [];
 
   protected $logger;
+
+  function __construct() {
+    $this->hosts = [
+      'tube.switch.ch',
+      'cast.switch.ch',
+      'download.cast.switch.ch',
+      self::getHostFromURL(get_config('tool_kaltura_migration', 'api_url')),
+      //self::getHostFromURL(get_config('tool_kaltura_migration', 'kaf_uri'))
+    ];
+  }
+
+  private static function getHostFromURL($url) {
+    return parse_url($url, PHP_URL_HOST);
+  }
 
   /**
    * @param \core\progress\base $progress Progress bar object, not started.
@@ -71,6 +85,8 @@ class tool_kaltura_migration_controller {
     $searchsql = $DB->sql_like($colname, '?');
     $params = [];
     $where = '';
+    $hosts = $this->hosts;
+
     foreach ($this->hosts as $host) {
       // That's the longest string that can used from the available info. Note that
       // we want to catch either http and https and unescaped and escaped forward slashes.
@@ -135,6 +151,32 @@ class tool_kaltura_migration_controller {
         }
       }
     }
+    // The urls for the script embeddings don't contain the entry id, so they are
+    // not sufficient for replacing the content. Get it from subsequent content and
+    // append to the url as a query param.
+    $api_url = rtrim(get_config('tool_kaltura_migration', 'api_url'), ' /');
+    $kaf_uri = rtrim(get_config('tool_kaltura_migration', 'kaf_uri'), ' /');
+    foreach ($urls as $index => $url) {
+      if (strpos($url, $api_url) !== FALSE) {
+        if (preg_match(
+          "#<script src=\"${url}\"></script>\s*<div[^>]*></div>\s*<script>[^<]*\"entry_id\":\s*\"([^\"]+)\"[^<]*</script>#",
+          $text, $matches)) {
+            $urls[$index] = $url . '?entry_id=' . $matches[1];
+        } else {
+          // There are places where the api url is used without being an embedding.
+          // we use the same regexp to discard these.
+          unset($urls[$index]);
+        }
+      }
+      // Kaf uri is used in other contexts than embedded links. This check should
+      // discard these other cases.
+      if (strpos($url, $kaf_uri) !== FALSE) {
+        if (strpos($url, $kaf_uri . "/browseandembed/index/media/entryid/") === FALSE) {
+          unset($urls[$index]);
+        }
+      }
+    }
+
     return $urls;
   }
 
@@ -358,6 +400,17 @@ class tool_kaltura_migration_controller {
     if (preg_match('#https?://[a-zA-z0-9\._\-/]*/([a-zA-Z0-9]{8,10})(\?|\#|$)#', $url, $matches)) {
       return [$matches[1]];
     }
+
+    return false;
+  }
+
+  protected function getEntryIdFromUrl($url) {
+    if (preg_match('#https?://[^\?]*\?entry_id=(.*)$#', $url, $matches)) {
+      return $matches[1];
+    }
+    if (preg_match('#https?://[^/]+/browseandembed/index/media/entryid/([^/]+)/.*#', $url, $matches)) {
+      return $matches[1];
+    }
     return false;
   }
 
@@ -390,7 +443,8 @@ class tool_kaltura_migration_controller {
         $column = $record->colname;
         $url = $record->url;
         $referenceIds = $this->getReferenceIdsFromUrl($url);
-        if (!$referenceIds) {
+        $entryId = $this->getEntryIdFromUrl($url);
+        if (!$referenceIds && !$entryId) {
           $this->logger->error('Could not get refid from url ' . $url);
         } else if ((strpos($url, '/channels/') !== FALSE) || (strpos($url, '/channel/') !== FALSE)) {
           // Replace channel links.
@@ -407,14 +461,20 @@ class tool_kaltura_migration_controller {
           }
         } else {
           // Replace media embeds or links.
-          $entry = $api->getMediaByReferenceIds($referenceIds);
+          if ($referenceIds) {
+            $entry = $api->getMediaByReferenceIds($referenceIds);
+          } else if ($entryId) {
+            $entry = $api->getMediaByEntryId($entryId);
+          }
+
           if (!$entry) {
-            $this->logger->error('Could not get Kaltura media with refid ' . implode(',', $referenceIds));
+            $this->logger->error('Could not get Kaltura media with ' . $referenceIds ? 'refid ' . implode(',', $referenceIds) :  'id ' . $entryId);
           } else if ($this->replaceVideo($table, $column, $id, $url, $entry, $filterablelinks, $test)) {
             $record->replaced = true;
             $DB->update_record('tool_kaltura_migration_urls', $record);
             $replaced++;
-            $this->logger->info('Video replaced in table ' . $table . ' column ' . $column . ' record id ' . $id . ' with refid ' . implode(',', $referenceIds));
+
+            $this->logger->info('Video replaced in table ' . $table . ' column ' . $column . ' record id ' . $id . ' with ' . ($referenceIds ? 'refid ' . implode(',', $referenceIds) : 'entryid ' . $entryId));
           } else if (!$test) {
             $this->logger->error('Could not replace html content in table ' . $table . ' column ' . $column . ' record id ' . $id);
           }
@@ -483,10 +543,18 @@ class tool_kaltura_migration_controller {
       $iframe3_reg = '/<iframe\s[^>]*src\s*=\s*"' . preg_quote($url, "/") . '"[^>]*><\/iframe>/';
       $video_reg = '/<video\s[^>]*width="(\d+)"\s+height="(\d+)"[^>]*><source\ssrc="'. preg_quote($url, "/") .'">[^<]*<\/video>/';
       $video2_reg = '/<video\s[^>]*><source\s[^>]*src="' . preg_quote($url, "/") . '"[^>]*>.*?<\/video>/';
+      if (($pos = strrpos($url, '?entry_id=')) !== FALSE) {
+        $url = substr($url, 0, $pos);
+      }
+      $script_reg = "#<script src=\"".preg_quote($url, "#")."\"></script>\s*<div[^>]*width:\s*(\d+)px;\s*height:\s*(\d+)px[^>]*></div>\s*<script>[^<]*</script>#";
+      $anchor_reg = "#<a href=\"" . preg_quote($url, "#") . "\">tinymce-kalturamedia-embed||[^|]*||(\d+)||(\d+)</a>#";
 
+      $regexs = [$iframe_reg, $iframe2_reg, $iframe3_reg, $video_reg, $video2_reg];
+      // Only replace the new embedding forms that are not the way we want the embedding to be done.
+      $regexs[] = $filterablelinks ? $script_reg : $anchor_reg;
 
       // Replace video embeddings
-      $content = preg_replace_callback([$iframe_reg, $iframe2_reg, $iframe3_reg, $video_reg, $video2_reg], function($matches) use ($entry, $filterablelinks) {
+      $content = preg_replace_callback($regexs, function($matches) use ($entry, $filterablelinks) {
         if (count($matches) > 2) {
           $width = $matches[1];
           $height = $matches[2];
