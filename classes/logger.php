@@ -82,6 +82,10 @@ class tool_kaltura_migration_logger {
     $content = '<div style="white-space: pre-wrap; font-family: monospace; max-width: 500px; max-height: 500px; overflow: scroll;">' . $content . "</div>";
     $this->content($content);
   }
+  public function htmlContent($content) {
+    $content = format_text($content, FORMAT_HTML, ['noclean' => true]);
+    $this->content($content);
+  }
   /**
    * @param int $level Use level constans from this class.
    * @param string $message The message string.

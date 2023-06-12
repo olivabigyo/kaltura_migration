@@ -366,7 +366,7 @@ class tool_kaltura_migration_controller {
    * @param string|int $course id, if nonnegative, content not in any course if -1 and all courses if -2.
    * @return true if no errors, array of error strings if errors.
    */
-  public function replace($course = -2, $test = false) {
+  public function replace($course = -2, $filterablelinks = false, $test = false) {
     global $DB;
     $conditions = [];
     if (intval($course) > -2) {
@@ -410,7 +410,7 @@ class tool_kaltura_migration_controller {
           $entry = $api->getMediaByReferenceIds($referenceIds);
           if (!$entry) {
             $this->logger->error('Could not get Kaltura media with refid ' . implode(',', $referenceIds));
-          } else if ($this->replaceVideo($table, $column, $id, $url, $entry, $test)) {
+          } else if ($this->replaceVideo($table, $column, $id, $url, $entry, $filterablelinks, $test)) {
             $record->replaced = true;
             $DB->update_record('tool_kaltura_migration_urls', $record);
             $replaced++;
@@ -465,7 +465,7 @@ class tool_kaltura_migration_controller {
   /**
    * Replaces a single video embedding from a DB text field.
    */
-  function replaceVideo($table, $column, $id, $url, $entry, $test = false) {
+  function replaceVideo($table, $column, $id, $url, $entry, $filterablelinks, $test = false) {
     $is_json = $this->isJsonField($table, $column);
 
     global $DB;
@@ -474,7 +474,7 @@ class tool_kaltura_migration_controller {
       if ($is_json) {
         $this->logger->codeContent($content);
       } else {
-        $this->logger->content($content);
+        $this->logger->htmlContent($content);
       }
     }
     if (!$is_json) {
@@ -486,7 +486,7 @@ class tool_kaltura_migration_controller {
 
 
       // Replace video embeddings
-      $content = preg_replace_callback([$iframe_reg, $iframe2_reg, $iframe3_reg, $video_reg, $video2_reg], function($matches) use ($entry) {
+      $content = preg_replace_callback([$iframe_reg, $iframe2_reg, $iframe3_reg, $video_reg, $video2_reg], function($matches) use ($entry, $filterablelinks) {
         if (count($matches) > 2) {
           $width = $matches[1];
           $height = $matches[2];
@@ -499,7 +499,7 @@ class tool_kaltura_migration_controller {
           $width = min($entry->width, 608);
           $height = round($entry->height * $width / $entry->width);
         }
-        return $this->getKalturaEmbedCode($entry, $width, $height);
+        return $this->getKalturaEmbedCode($entry, $width, $height, $filterablelinks);
       }, $content);
     }
     // Replace video links and other references (not embeddings)
@@ -516,7 +516,7 @@ class tool_kaltura_migration_controller {
       if ($is_json) {
         $this->logger->codeContent($content);
       } else {
-        $this->logger->content($content);
+        $this->logger->htmlContent($content);
       }
       return false;
     } else {
@@ -539,25 +539,54 @@ class tool_kaltura_migration_controller {
     return "${url}/p/${partnerid}/sp/${partnerid}00/playManifest/entryId/${entryid}/format/url/protocol/https/flavorParamIds/${flavorParamIds}/video.mp4";
   }
 
-  function getKalturaEmbedCode($entry, $width, $height) {
+  function getKalturaEmbedCode($entry, $width, $height, $filterablelinks) {
+    if ($filterablelinks) {
+      return $this->getKalturaEmbedCodeLink($entry, $width, $height);
+    } else {
+      return $this->getKalturaEmbedCodeJS($entry, $width, $height);
+    }
+  }
+
+  function getKalturaEmbedCodeJS($entry, $width, $height) {
     $style = "style=\"width: {$width}px; height: {$height}px;\"";
     $url = rtrim(get_config('tool_kaltura_migration', 'api_url'), ' /');
     $hash = mt_rand();
     $uiconfid = $this->getUIConfId();
     $partnerid = get_config('tool_kaltura_migration', 'partner_id');
     return <<<EOD
-<script src="${url}/p/${partnerid}/sp/${partnerid}00/embedIframeJs/uiconf_id/{$uiconfid}/partner_id/{$partnerid}"></script>
-<div id="kaltura_player_{$hash}" {$style}></div>
-<script>
-kWidget.embed({
-  "targetId": "kaltura_player_{$hash}",
-  "wid": "_{$partnerid}",
-  "uiconf_id": {$uiconfid},
-  "flashvars": {},
-  "entry_id": "{$entry->id}"
-});
-</script>
-EOD;
+    <script src="${url}/p/${partnerid}/sp/${partnerid}00/embedIframeJs/uiconf_id/{$uiconfid}/partner_id/{$partnerid}"></script>
+    <div id="kaltura_player_{$hash}" {$style}></div>
+    <script>
+    kWidget.embed({
+      "targetId": "kaltura_player_{$hash}",
+      "wid": "_{$partnerid}",
+      "uiconf_id": {$uiconfid},
+      "flashvars": {},
+      "entry_id": "{$entry->id}"
+    });
+    </script>
+    EOD;
+  }
+
+  function formatDuration($seconds) {
+    $now = new DateTime();
+    $after = clone($now);
+    $after->add(new DateInterval("PT{$seconds}S"));
+    $interval = $after->diff($now);
+    return $interval->format("%I:%S");
+  }
+
+  function getKalturaEmbedCodeLink($entry, $width, $height) {
+    $uiconfid = $this->getUIConfId();
+    // TODO: change that!
+    $url = "https://105.kaf.cast.switch.ch";
+    $url = "$url/browseandembed/index/media/entryid/{$entry->id}"
+      . "/showDescription/false/showTitle/false/showTags/false/showDuration/false"
+      . "/showOwner/false/showUploadDate/false/playerSize/{$width}x{$height}"
+      . "/playerSkin/{$uiconfid}/";
+    $title = htmlspecialchars($entry->name);
+    $duration = $this->formatDuration($entry->duration);
+    return "<a href=\"$url\">tinymce-kalturamedia-embed||{$title} ($duration)||$width||$height</a>";
   }
 
   /**

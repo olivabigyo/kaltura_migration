@@ -87,6 +87,7 @@ if ($optestreplacevideos || $opreplacevideos) {
 }
 
 $modulestocoursemedia = optional_param('modulestocoursemedia', 0, PARAM_BOOL);
+$filterablelinks = optional_param('filterablelinks', 0, PARAM_BOOL);
 
 echo $OUTPUT->header();
 
@@ -117,9 +118,9 @@ if ($op) {
   } else if ($opdelete) {
     $migration->deleteResults();
   } else if ($optestreplacevideos) {
-    $errors = $migration->replace($course, true);
+    $errors = $migration->replace($course, $filterablelinks, true);
   } else if ($opreplacevideos) {
-    $errors = $migration->replace($course);
+    $errors = $migration->replace($course, $filterablelinks);
   } else if ($optestreplacemodules) {
     $errors = $migration->replaceModules($course, $modulestocoursemedia, true);
   } else if ($opreplacemodules) {

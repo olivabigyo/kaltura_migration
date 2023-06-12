@@ -69,6 +69,10 @@ class tool_kaltura_migration_form extends moodleform
         if ($hasreplacements) {
             $courses = $this->getReplaceVideoCourses();
             $mform->addElement('select', 'coursesreplacevideos', get_string('course'), $courses);
+            $mform->addElement('radio', 'filterablelinks', '', get_string('replaceasembeddings', 'tool_kaltura_migration'), 0);
+            $mform->addElement('radio', 'filterablelinks', '', get_string('replaceasfilterablelinks', 'tool_kaltura_migration'), 1);
+            $mform->setDefault('filterablelinks', 1);
+
             $buttonarray[] = $mform->createElement('submit', 'optestreplacevideos', get_string('testreplacevideos', 'tool_kaltura_migration'));
             if ($op == 'optestreplacevideos') {
                 $message = $numerrors > 0 ? get_string('thereareerrors', 'tool_kaltura_migration', $numerrors) : get_string('noerrors', 'tool_kaltura_migration');
