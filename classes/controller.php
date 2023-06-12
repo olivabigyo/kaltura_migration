@@ -467,7 +467,7 @@ class tool_kaltura_migration_controller {
           }
 
           if (!$entry) {
-            $this->logger->error('Could not get Kaltura media with ' . $referenceIds ? 'refid ' . implode(',', $referenceIds) :  'id ' . $entryId);
+            $this->logger->error('Could not get Kaltura media with ' . ($referenceIds ? 'refid ' . implode(',', $referenceIds) :  'id ' . $entryId));
           } else if ($this->replaceVideo($table, $column, $id, $url, $entry, $filterablelinks, $test)) {
             $record->replaced = true;
             $DB->update_record('tool_kaltura_migration_urls', $record);
