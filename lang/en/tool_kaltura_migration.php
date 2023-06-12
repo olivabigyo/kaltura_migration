@@ -72,3 +72,6 @@ $string['addflavorsheader'] = 'Add quality parameter to media urls';
 $string['addflavorsdescription'] = 'This script will search the whole database for Kaltura media URLs and will add the media quality parameter (technically called flavorParamIds) to these urls so that they point to the video with high quality. The test button searches the database and logs all changes, without actually modifying your data. Use it first to check that the script runs without errors.';
 $string['testflavors'] = 'Test replace';
 $string['addflavors'] = 'Real replace';
+$string['replaceasembeddings'] = 'Replace with generic javascript embedding code.';
+$string['replaceasfilterablelinks'] = 'Replace with link filterable by Kaltura Moodle plugin.';
+$string['kaf_uri'] = 'KAF URI';
