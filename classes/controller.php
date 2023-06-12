@@ -629,18 +629,18 @@ class tool_kaltura_migration_controller {
     $uiconfid = $this->getUIConfId();
     $partnerid = get_config('tool_kaltura_migration', 'partner_id');
     return <<<EOD
-    <script src="${url}/p/${partnerid}/sp/${partnerid}00/embedIframeJs/uiconf_id/{$uiconfid}/partner_id/{$partnerid}"></script>
-    <div id="kaltura_player_{$hash}" {$style}></div>
-    <script>
-    kWidget.embed({
-      "targetId": "kaltura_player_{$hash}",
-      "wid": "_{$partnerid}",
-      "uiconf_id": {$uiconfid},
-      "flashvars": {},
-      "entry_id": "{$entry->id}"
-    });
-    </script>
-    EOD;
+<script src="${url}/p/${partnerid}/sp/${partnerid}00/embedIframeJs/uiconf_id/{$uiconfid}/partner_id/{$partnerid}"></script>
+<div id="kaltura_player_{$hash}" {$style}></div>
+<script>
+kWidget.embed({
+  "targetId": "kaltura_player_{$hash}",
+  "wid": "_{$partnerid}",
+  "uiconf_id": {$uiconfid},
+  "flashvars": {},
+  "entry_id": "{$entry->id}"
+});
+</script>
+EOD;
   }
 
   function formatDuration($seconds) {
