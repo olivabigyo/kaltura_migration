@@ -85,7 +85,6 @@ class tool_kaltura_migration_controller {
     $searchsql = $DB->sql_like($colname, '?');
     $params = [];
     $where = '';
-    $hosts = $this->hosts;
 
     foreach ($this->hosts as $host) {
       // That's the longest string that can used from the available info. Note that
