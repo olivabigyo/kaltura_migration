@@ -547,11 +547,15 @@ class tool_kaltura_migration_controller {
         $url = substr($url, 0, $pos);
       }
       $script_reg = "#<script src=\"".preg_quote($url, "#")."\"></script>\s*<div[^>]*width:\s*(\d+)px;\s*height:\s*(\d+)px[^>]*></div>\s*<script>[^<]*</script>#";
-      $anchor_reg = "#<a href=\"" . preg_quote($url, "#") . "\">tinymce-kalturamedia-embed||[^|]*||(\d+)||(\d+)</a>#";
+      $anchor_reg = "#<a href=\"" . preg_quote($url, "#") . "\">tinymce-kalturamedia-embed\|\|[^|]*\|\|(\d+)\|\|(\d+)</a>#";
 
       $regexs = [$iframe_reg, $iframe2_reg, $iframe3_reg, $video_reg, $video2_reg];
       // Only replace the new embedding forms that are not the way we want the embedding to be done.
-      $regexs[] = $filterablelinks ? $script_reg : $anchor_reg;
+      if ($filterablelinks) {
+        $regexs[] = $script_reg;
+      } else {
+        $regexs[] = $anchor_reg;
+      }
 
       // Replace video embeddings
       $content = preg_replace_callback($regexs, function($matches) use ($entry, $filterablelinks) {
@@ -570,9 +574,13 @@ class tool_kaltura_migration_controller {
         return $this->getKalturaEmbedCode($entry, $width, $height, $filterablelinks);
       }, $content);
     }
+
     // Replace video links and other references (not embeddings)
-    $kaltura_url = $this->getKalturaVideoUrl($entry);
-    $content = str_replace($url, $kaltura_url, $content);
+    if (!preg_match($script_reg, $content) && !preg_match($anchor_reg, $content)) {
+      $kaltura_url = $this->getKalturaVideoUrl($entry);
+      $content = str_replace($url, $kaltura_url, $content);
+    }
+
     // Also try with escaped slashes for json fields.
     if ($is_json) {
       $url = str_replace('/', '\\/', $url);
