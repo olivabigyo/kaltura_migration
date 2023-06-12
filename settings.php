@@ -45,6 +45,12 @@ if ($hassiteconfig) {
     '',
     $api_url, PARAM_RAW_TRIMMED));
 
+    $kaf_uri = get_config('local_kaltura', 'kaf_uri');
+    $settings->add(new admin_setting_configtext('tool_kaltura_migration/kaf_uri',
+    new lang_string('kaf_uri', 'tool_kaltura_migration'),
+    '',
+    $kaf_uri ? $kaf_uri : '', PARAM_RAW_TRIMMED));
+
     $uiconf_id = '';
     $settings->add(new admin_setting_configtext('tool_kaltura_migration/uiconf_id',
     new lang_string('uiconf_id', 'tool_kaltura_migration'),

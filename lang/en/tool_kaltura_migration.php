@@ -74,3 +74,4 @@ $string['testflavors'] = 'Test replace';
 $string['addflavors'] = 'Real replace';
 $string['replaceasembeddings'] = 'Replace with generic javascript embedding code.';
 $string['replaceasfilterablelinks'] = 'Replace with link filterable by Kaltura Moodle plugin.';
+$string['kaf_uri'] = 'KAF URI';

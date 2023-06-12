@@ -578,8 +578,7 @@ class tool_kaltura_migration_controller {
 
   function getKalturaEmbedCodeLink($entry, $width, $height) {
     $uiconfid = $this->getUIConfId();
-    // TODO: change that!
-    $url = "https://105.kaf.cast.switch.ch";
+    $url = rtrim(get_config('tool_kaltura_migration', 'kaf_uri'), ' /');
     $url = "$url/browseandembed/index/media/entryid/{$entry->id}"
       . "/showDescription/false/showTitle/false/showTags/false/showDuration/false"
       . "/showOwner/false/showUploadDate/false/playerSize/{$width}x{$height}"
