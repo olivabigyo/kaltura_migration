@@ -652,6 +652,11 @@ EOD;
   }
 
   function getKalturaEmbedCodeLink($entry, $width, $height) {
+    // Kaltura embedding links need to have a w and h such that the height is 30px
+    // more than a height that corresponds to the aspect ratio of the video given
+    // the width. Otherwise it shows an ugly scroll bar.
+    $height = ceil(($entry->height * $width) / $entry->width) + 30;
+
     $uiconfid = $this->getUIConfId();
     $url = rtrim(get_config('tool_kaltura_migration', 'kaf_uri'), ' /');
     $url = "$url/browseandembed/index/media/entryid/{$entry->id}"
