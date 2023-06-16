@@ -18,8 +18,10 @@ If you've already the plugin installed, you need to *Uninstall* it first so the 
 ## Use
  - Go to *Site Administration > Plugins > Admin tools > Kaltura migration*.
  ### Replace embeddings and video urls
- - Press the button "Search" to search the whole database for SWITCH video URLs.
- - Press the button "Test replace videos" to attempt replacing the videos from a course or from the whole site, but don't actually change the database.
+ - Press the button "Search" to search the whole database for SWITCH video URLs and also video URLs migrated with previous versions of this plugin.
+ - Press the button "Test replace videos" to attempt replacing the videos from a course or from the whole site, but don't actually change the database. You can choose either 
+   - Replace with generic javascript embedding code. See Dynamic Embed from [kaltura player docs](https://kaltura.github.io/kaltura-player-js/docs/embed-types.html).
+   - Replace with links filterable by the Kaltura Moodle plugin. It creates links similar than the ones produced by the Kaltura button in the content editor. These links are then converted to embedding code by the Kaltura Moodle filter. Note that you won't see the links in the preview but the final result since it already uses the filtering.
  - After the tests, you'll see a new button "Replace Videos". Click it to perform the migration of embedded and linked videos.
  ### Replace SwitchCast activities
  - Choose whether you want to 
