@@ -536,6 +536,9 @@ class tool_kaltura_migration_controller {
         $this->logger->htmlContent($content);
       }
     }
+    $script_reg = "#<script src=\"".preg_quote($url, "#")."\"></script>\s*<div[^>]*width:\s*(\d+)px;\s*height:\s*(\d+)px[^>]*></div>\s*<script>[^<]*</script>#";
+    $anchor_reg = "#<a href=\"" . preg_quote($url, "#") . "\">tinymce-kalturamedia-embed\|\|[^|]*\|\|(\d+)\|\|(\d+)</a>#";
+
     if (!$is_json) {
       $iframe_reg = '/<iframe\s[^>]*src\s*=\s*"' . preg_quote($url, "/") . '"[^>]*width="(\d+)"\s+height="(\d+)"[^>]*><\/iframe>/';
       $iframe2_reg = '/<iframe\s[^>]*width="(\d+)"\s+height="(\d+)"[^>]*src\s*=\s*"' . preg_quote($url, "/") . '"[^>]*><\/iframe>/';
