@@ -77,9 +77,10 @@ class tool_kaltura_migration_form extends moodleform
             if ($op == 'optestreplacevideos') {
                 $message = $numerrors > 0 ? get_string('thereareerrors', 'tool_kaltura_migration', $numerrors) : get_string('noerrors', 'tool_kaltura_migration');
                 $mform->addElement('static', 'videoerrors', '', $message);
-                $buttonarray[] = $mform->createElement('submit', 'opreplacevideos', get_string('replacevideos', 'tool_kaltura_migration'));
-                $mform->disabledIf('opreplacevideos', 'coursesreplacevideos', 'neq', $course);
+                // $buttonarray[] = $mform->createElement('submit', 'opreplacevideos', get_string('replacevideos', 'tool_kaltura_migration'));
+                // $mform->disabledIf('opreplacevideos', 'coursesreplacevideos', 'neq', $course);
             }
+            $buttonarray[] = $mform->createElement('submit', 'opreplacevideos', get_string('replacevideos', 'tool_kaltura_migration'));
         }
         $mform->addGroup($buttonarray, 'buttonar', '', ' ', false);
 
