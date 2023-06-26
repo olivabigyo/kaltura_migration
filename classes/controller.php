@@ -418,13 +418,13 @@ class tool_kaltura_migration_controller {
    * @param string|int $course id, if nonnegative, content not in any course if -1 and all courses if -2.
    * @return true if no errors, array of error strings if errors.
    */
-  public function replace($course = -2, $filterablelinks = false, $test = false) {
+  public function replace($course = -2, $filterablelinks = false, $test = false, $limit = 0, $offset = 0) {
     global $DB;
     $conditions = [];
     if (intval($course) > -2) {
       $conditions['course'] = $course;
     }
-    $records = $DB->get_records('tool_kaltura_migration_urls', $conditions);
+    $records = $DB->get_records('tool_kaltura_migration_urls', $conditions, 'id', '*', $offset, $limit);
     $this->logger = new tool_kaltura_migration_logger();
     $this->logger->start($test);
 

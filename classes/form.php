@@ -72,6 +72,14 @@ class tool_kaltura_migration_form extends moodleform
             $mform->addElement('radio', 'filterablelinks', '', get_string('replaceasembeddings', 'tool_kaltura_migration'), 0);
             $mform->addElement('radio', 'filterablelinks', '', get_string('replaceasfilterablelinks', 'tool_kaltura_migration'), 1);
             $mform->setDefault('filterablelinks', 1);
+            $mform->addElement('text', 'limit', get_string('limit', 'tool_kaltura_migration'));
+            $mform->setType('limit', PARAM_INT);
+            // TODO(lukc): this doesn't work. Why?
+            // $mform->setDefault('limit', $this->_customdata['limit']);
+            $mform->addElement('text', 'offset', get_string('offset', 'tool_kaltura_migration'));
+            $mform->setType('offset', PARAM_INT);
+            // TODO(lukc): this doesn't work. Why?
+            // $mform->setDefault('offset', $this->_customdata['offset']);
 
             $buttonarray[] = $mform->createElement('submit', 'optestreplacevideos', get_string('testreplacevideos', 'tool_kaltura_migration'));
             if ($op == 'optestreplacevideos') {
