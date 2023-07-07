@@ -145,6 +145,8 @@ class tool_kaltura_migration_controller {
     $urls = [];
     if (preg_match_all($pattern, $text, $matches)) {
       foreach ($matches[0] as $url) {
+        // Remove trailing HTML entities.
+        $url = preg_replace('/(&[a-z]+;)+$/', '', $url);
         if (!in_array($url, $urls)) {
           $urls[] = $url;
         }
