@@ -1303,6 +1303,30 @@ EOD;
 
   }
 
+  // Adhoc task related functions.
 
+  public function getCurrentTask() {
+    return get_config('tool_kaltura_migration', 'current_task');
+  }
+
+  public function setCurrentTask($task) {
+    set_config('current_task', $task, 'tool_kaltura_migration');
+  }
+
+  public function getTaskStatus() {
+    return get_config('tool_kaltura_migration', 'task_status');
+  }
+
+  public function setTaskStatus($status) {
+    set_config('task_status', $status, 'tool_kaltura_migration');
+  }
+
+  public function getTaskProgress() {
+    return get_config('tool_kaltura_migration', 'task_progress');
+  }
+
+  public function setTaskProgress($progress) {
+    set_config('task_progress', $progress, 'tool_kaltura_migration');
+  }
 
 }

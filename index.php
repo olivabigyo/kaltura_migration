@@ -113,12 +113,11 @@ echo $OUTPUT->box_end();
 
 echo $OUTPUT->box_start();
 echo $OUTPUT->heading('Background Task', 4);
-// $currenttask = $migration->getCurrentTask();
-$currenttask = "Searching";
-// $taskstatus = $migration->getTaskStatus();
-$taskstatus = "Running";
-// $taskprogress = $migration->getTaskProgress();
-$taskprogress = "0%";
+
+$currenttask = $migration->getCurrentTask();
+$taskstatus = $migration->getTaskStatus();
+$taskprogress = $migration->getTaskProgress();
+
 echo '<p>';
 echo "Current task: $currenttask <br>";
 echo "Status: $taskstatus <br>";
