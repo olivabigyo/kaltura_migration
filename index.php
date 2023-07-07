@@ -111,6 +111,21 @@ if (!$migration->checkKalturaAPIConnection()) {
 }
 echo $OUTPUT->box_end();
 
+echo $OUTPUT->box_start();
+echo $OUTPUT->heading('Background Task', 4);
+// $currenttask = $migration->getCurrentTask();
+$currenttask = "Searching";
+// $taskstatus = $migration->getTaskStatus();
+$taskstatus = "Running";
+// $taskprogress = $migration->getTaskProgress();
+$taskprogress = "0%";
+echo '<p>';
+echo "Current task: $currenttask <br>";
+echo "Status: $taskstatus <br>";
+echo "Progress: $taskprogress <br>";
+echo '</p>';
+echo $OUTPUT->box_end();
+
 $errors = false;
 if ($op) {
   echo $OUTPUT->box_start();
