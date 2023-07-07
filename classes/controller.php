@@ -1330,6 +1330,11 @@ EOD;
   }
 
   public function scheduleTask($taskname) {
+    $status = $this->getTaskStatus();
+    if(!in_array($status, ['', 'done' , 'failed'])) {
+      print_error('tasknotfinished', 'tool_kaltura_migration');
+    }
+
     $this->setCurrentTask($taskname);
     $this->setTaskStatus('scheduled');
     $this->setTaskProgress('');

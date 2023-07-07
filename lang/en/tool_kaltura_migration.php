@@ -75,3 +75,4 @@ $string['addflavors'] = 'Real replace';
 $string['replaceasembeddings'] = 'Replace with generic javascript embedding code.';
 $string['replaceasfilterablelinks'] = 'Replace with link filterable by Kaltura Moodle plugin.';
 $string['kaf_uri'] = 'KAF URI';
+$string['tasknotfinished'] = 'New task can not be started, previous task has not finished yet.';
