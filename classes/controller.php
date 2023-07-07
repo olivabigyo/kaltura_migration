@@ -1331,7 +1331,7 @@ EOD;
 
   public function scheduleTask($taskname) {
     $status = $this->getTaskStatus();
-    if(!in_array($status, ['', 'done' , 'failed'])) {
+    if(!in_array($status, ['', 'completed' , 'failed'])) {
       print_error('tasknotfinished', 'tool_kaltura_migration');
     }
 

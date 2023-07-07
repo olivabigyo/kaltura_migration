@@ -33,8 +33,21 @@ class task extends \core\task\adhoc_task
         $migration = new \tool_kaltura_migration_controller();
 
         $migration->setTaskStatus('running');
-        sleep(10);
-        $migration->setTaskStatus('done');
+        $status = 'failed';
 
+        try {
+            $task = $migration->getCurrentTask();
+            if ($task == 'search') {
+                $progress = new \core\progress\display_if_slow();
+                $migration->execute($progress);
+            } else {
+                throw new \Exception('Unknown task: ' . $task);
+            }
+            $status = 'completed';
+        } catch (\Exception $e) {
+            $migration->setTaskProgress($e->getMessage());
+        }
+
+        $migration->setTaskStatus($status);
     }
 }
