@@ -1329,4 +1329,12 @@ EOD;
     set_config('task_progress', $progress, 'tool_kaltura_migration');
   }
 
+  public function scheduleTask($taskname) {
+    $this->setCurrentTask($taskname);
+    $this->setTaskStatus('scheduled');
+    $this->setTaskProgress('');
+
+    $task = new \tool_kaltura_migration\task\task();
+    \core\task\manager::queue_adhoc_task($task);
+  }
 }

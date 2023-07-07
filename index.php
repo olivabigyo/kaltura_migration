@@ -130,8 +130,9 @@ if ($op) {
   echo $OUTPUT->box_start();
   echo $OUTPUT->heading(get_string('results', 'tool_kaltura_migration'), 3);
   if ($opsearch) {
-    $progress = new \core\progress\display_if_slow();
-    $migration->execute($progress);
+    // $progress = new \core\progress\display_if_slow();
+    // $migration->execute($progress);
+    $migration->scheduleTask('search');
   } else if ($opdelete) {
     $migration->deleteResults();
   } else if ($optestreplacevideos) {
