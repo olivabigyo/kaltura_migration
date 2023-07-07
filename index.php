@@ -39,6 +39,8 @@ raise_memory_limit(MEMORY_EXTRA);
 
 admin_externalpage_setup('tool_kaltura_migration');
 
+$URL = new moodle_url('/admin/tool/kaltura_migration/index.php');
+
 $migration = new tool_kaltura_migration_controller();
 
 $op = false;
@@ -133,6 +135,7 @@ if ($op) {
     // $progress = new \core\progress\display_if_slow();
     // $migration->execute($progress);
     $migration->scheduleTask('search');
+    redirect($URL);
   } else if ($opdelete) {
     $migration->deleteResults();
   } else if ($optestreplacevideos) {
