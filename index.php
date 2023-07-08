@@ -122,11 +122,19 @@ echo $OUTPUT->heading('Background Task', 4);
 $currenttask = $migration->getCurrentTask();
 $taskstatus = $migration->getTaskStatus();
 $taskprogress = $migration->getTaskProgress();
+// $tasklastupdate = $migration->getTaskLastUpdate();
+$tasklastupdate = '1688846400';
+if ($tasklastupdate) {
+  $tasklastupdate = userdate($tasklastupdate, '%A, %d %B %Y, %H:%M:%S');
+} else {
+  $tasklastupdate = get_string('never');
+}
 
 echo '<p>';
 echo "Current task: $currenttask <br>";
 echo "Status: $taskstatus <br>";
 echo "Progress: $taskprogress <br>";
+echo "Last update: $tasklastupdate <br>";
 echo '</p>';
 echo $OUTPUT->box_end();
 
