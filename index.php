@@ -61,6 +61,9 @@ if ($optestreplacevideos = optional_param('optestreplacevideos', 0, PARAM_BOOL))
 if ($opreplacevideos = optional_param('opreplacevideos', 0, PARAM_BOOL)) {
   $op = 'opreplacevideos';
 }
+if ($opreplacealltask = optional_param('opreplacealltask', 0, PARAM_BOOL)) {
+  $op = 'opreplacealltask';
+}
 if ($optestreplacemodules = optional_param('optestreplacemodules', 0, PARAM_BOOL)) {
   $op = 'optestreplacemodules';
 }
@@ -140,6 +143,12 @@ if ($op) {
     $errors = $migration->replace($course, $filterablelinks, true, $limit, $offset);
   } else if ($opreplacevideos) {
     $errors = $migration->replace($course, $filterablelinks, false, $limit, $offset);
+  } else if ($opreplacealltask) {
+    if (!$filterablelinks) {
+      print_error('onlyfilterablelinks', 'tool_kaltura_migration');
+    }
+    $migration->scheduleTask('replaceall');
+    redirect($URL);
   } else if ($optestreplacemodules) {
     $errors = $migration->replaceModules($course, $modulestocoursemedia, true);
   } else if ($opreplacemodules) {

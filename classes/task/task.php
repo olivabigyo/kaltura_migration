@@ -40,6 +40,8 @@ class task extends \core\task\adhoc_task
             if ($task == 'search') {
                 $progress = new \tool_kaltura_migration\task\progress();
                 $migration->execute($progress, true);
+            } elseif ($task == 'replaceall') {
+                $migration->replaceAll();
             } else {
                 throw new \Exception('Unknown task: ' . $task);
             }

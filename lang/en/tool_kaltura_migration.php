@@ -79,3 +79,4 @@ $string['tasknotfinished'] = 'New task can not be started, previous task has not
 $string['replacealltask'] = 'Replace all (background task)';
 $string['limit'] = 'Limit';
 $string['offset'] = 'Offset';
+$string['onlyfilterablelinks'] = 'Background task is currently available only for replacing with filterable links';

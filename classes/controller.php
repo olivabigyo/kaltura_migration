@@ -499,6 +499,10 @@ class tool_kaltura_migration_controller {
     return count($errors) == 0 ? true : $errors;
   }
 
+  public function replaceAll() {
+    $this->replace(-2, true);
+  }
+
   /**
    * Replaces a single channel link from a DB text field.
    */
