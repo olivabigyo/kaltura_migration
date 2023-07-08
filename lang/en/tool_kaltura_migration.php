@@ -77,3 +77,5 @@ $string['replaceasfilterablelinks'] = 'Replace with link filterable by Kaltura M
 $string['kaf_uri'] = 'KAF URI';
 $string['tasknotfinished'] = 'New task can not be started, previous task has not finished yet.';
 $string['replacealltask'] = 'Replace all (background task)';
+$string['limit'] = 'Limit';
+$string['offset'] = 'Offset';
