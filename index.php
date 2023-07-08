@@ -122,8 +122,7 @@ echo $OUTPUT->heading('Background Task', 4);
 $currenttask = $migration->getCurrentTask();
 $taskstatus = $migration->getTaskStatus();
 $taskprogress = $migration->getTaskProgress();
-// $tasklastupdate = $migration->getTaskLastUpdate();
-$tasklastupdate = '1688846400';
+$tasklastupdate = $migration->getTaskLastUpdate();
 if ($tasklastupdate) {
   $tasklastupdate = userdate($tasklastupdate, '%A, %d %B %Y, %H:%M:%S');
 } else {

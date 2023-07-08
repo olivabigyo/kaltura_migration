@@ -1328,12 +1328,21 @@ EOD;
 
   // Adhoc task related functions.
 
+  public static function getTaskLastUpdate() {
+    return get_config('tool_kaltura_migration', 'task_last_update');
+  }
+
+  public static function updateTaskLastUpdate() {
+    set_config('task_last_update', time(), 'tool_kaltura_migration');
+  }
+
   public static function getCurrentTask() {
     return get_config('tool_kaltura_migration', 'current_task');
   }
 
   public static function setCurrentTask($task) {
     set_config('current_task', $task, 'tool_kaltura_migration');
+    self::updateTaskLastUpdate();
   }
 
   public static function getTaskStatus() {
@@ -1342,6 +1351,7 @@ EOD;
 
   public static function setTaskStatus($status) {
     set_config('task_status', $status, 'tool_kaltura_migration');
+    self::updateTaskLastUpdate();
   }
 
   public static function getTaskProgress() {
@@ -1350,6 +1360,7 @@ EOD;
 
   public static function setTaskProgress($progress) {
     set_config('task_progress', $progress, 'tool_kaltura_migration');
+    self::updateTaskLastUpdate();
   }
 
   public function scheduleTask($taskname) {
