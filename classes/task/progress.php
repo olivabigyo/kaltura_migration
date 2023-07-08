@@ -30,15 +30,15 @@ class progress {
     private int $totalsteps = 0;
 
     public function start_progress(string $description, int $totalsteps) {
-        set_config('task_progress', $description, 'tool_kaltura_migration');
         $this->totalsteps = $totalsteps;
+        \tool_kaltura_migration_controller::setTaskProgress($description);
     }
 
     public function progress(int $step) {
-        set_config('task_progress', $step . ' / ' . $this->totalsteps, 'tool_kaltura_migration');
+        \tool_kaltura_migration_controller::setTaskProgress($step . ' / ' . $this->totalsteps);
     }
 
     public function end_progress() {
-        set_config('task_progress', $this->totalsteps . ' / ' . $this->totalsteps, 'tool_kaltura_migration');
+        \tool_kaltura_migration_controller::setTaskProgress($this->totalsteps . ' / ' . $this->totalsteps);
     }
 }

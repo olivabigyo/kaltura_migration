@@ -1328,27 +1328,27 @@ EOD;
 
   // Adhoc task related functions.
 
-  public function getCurrentTask() {
+  public static function getCurrentTask() {
     return get_config('tool_kaltura_migration', 'current_task');
   }
 
-  public function setCurrentTask($task) {
+  public static function setCurrentTask($task) {
     set_config('current_task', $task, 'tool_kaltura_migration');
   }
 
-  public function getTaskStatus() {
+  public static function getTaskStatus() {
     return get_config('tool_kaltura_migration', 'task_status');
   }
 
-  public function setTaskStatus($status) {
+  public static function setTaskStatus($status) {
     set_config('task_status', $status, 'tool_kaltura_migration');
   }
 
-  public function getTaskProgress() {
+  public static function getTaskProgress() {
     return get_config('tool_kaltura_migration', 'task_progress');
   }
 
-  public function setTaskProgress($progress) {
+  public static function setTaskProgress($progress) {
     set_config('task_progress', $progress, 'tool_kaltura_migration');
   }
 
