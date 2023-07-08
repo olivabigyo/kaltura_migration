@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Adhoc task
+ * Helper class for adhoc task progress reporting.
  *
  * @package    tool_kaltura_migration
  * @copyright  2023 lukc@zhaw.ch
@@ -26,28 +26,19 @@ namespace tool_kaltura_migration\task;
 
 defined('MOODLE_INTERNAL') || die();
 
-class task extends \core\task\adhoc_task
-{
-    public function execute()
-    {
-        $migration = new \tool_kaltura_migration_controller();
+class progress {
+    private int $totalsteps = 0;
 
-        $migration->setTaskStatus('running');
-        $status = 'failed';
+    public function start_progress(string $description, int $totalsteps) {
+        set_config('task_progress', $description, 'tool_kaltura_migration');
+        $this->totalsteps = $totalsteps;
+    }
 
-        try {
-            $task = $migration->getCurrentTask();
-            if ($task == 'search') {
-                $progress = new \tool_kaltura_migration\task\progress();
-                $migration->execute($progress);
-            } else {
-                throw new \Exception('Unknown task: ' . $task);
-            }
-            $status = 'completed';
-        } catch (\Exception $e) {
-            $migration->setTaskProgress($e->getMessage());
-        }
+    public function progress(int $step) {
+        set_config('task_progress', $step . ' / ' . $this->totalsteps, 'tool_kaltura_migration');
+    }
 
-        $migration->setTaskStatus($status);
+    public function end_progress() {
+        set_config('task_progress', $this->totalsteps . ' / ' . $this->totalsteps, 'tool_kaltura_migration');
     }
 }
