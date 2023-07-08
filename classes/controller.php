@@ -440,6 +440,7 @@ class tool_kaltura_migration_controller {
 
     $replaced = 0;
     $channels = 0;
+    $progress = 0;
     foreach ($records as $record) {
       $table = $record->tblname;
       $id = $record->resid;
@@ -486,7 +487,12 @@ class tool_kaltura_migration_controller {
           }
         }
       }
+      $progress++;
+      if ($this->progress && $progress % 200 == 0) {
+        $this->progress->progress($progress);
+      }
     }
+
     $this->logger->end();
     if (!$test) {
       global $OUTPUT;
@@ -499,8 +505,11 @@ class tool_kaltura_migration_controller {
     return count($errors) == 0 ? true : $errors;
   }
 
-  public function replaceAll() {
+  public function replaceAll($progress) {
+    $this->progress = $progress;
+    $progress->start_progress('Replacing all video urls', $this->countResults());
     $this->replace(-2, true);
+    $progress->end_progress();
   }
 
   /**
