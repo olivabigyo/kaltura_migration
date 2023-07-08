@@ -39,7 +39,7 @@ class task extends \core\task\adhoc_task
             $task = $migration->getCurrentTask();
             if ($task == 'search') {
                 $progress = new \tool_kaltura_migration\task\progress();
-                $migration->execute($progress);
+                $migration->execute($progress, true);
             } else {
                 throw new \Exception('Unknown task: ' . $task);
             }

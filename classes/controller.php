@@ -64,13 +64,18 @@ class tool_kaltura_migration_controller {
   /**
    * @param \core\progress\base $progress Progress bar object, not started.
    */
-  function execute($progress) {
+  function execute($progress, $backgroundtask = false) {
     $this->progress = $progress;
     $this->deleteResults();
     $this->search();
 
-    global $OUTPUT;
-    echo $OUTPUT->notification(get_string('foundnvideos', 'tool_kaltura_migration', $this->countResults()), \core\output\notification::NOTIFY_SUCCESS);
+    $feedback = get_string('foundnvideos', 'tool_kaltura_migration', $this->countResults());
+    if ($backgroundtask) {
+      $this->setTaskProgress($feedback);
+    } else {
+      global $OUTPUT;
+      echo $OUTPUT->notification($feedback, \core\output\notification::NOTIFY_SUCCESS);
+    }
   }
   /**
    * Search for video URLs in the specified table and column.
