@@ -423,7 +423,7 @@ class tool_kaltura_migration_controller {
   /**
    * Replace switch video embeds by kaltura embeds.
    * @param string|int $course id, if nonnegative, content not in any course if -1 and all courses if -2.
-   * @return true if no errors, array of error strings if errors.
+   * @return mixed true if no errors, array of error strings if errors.
    */
   public function replace($course = -2, $filterablelinks = false, $test = false, $limit = 0, $offset = 0) {
     global $DB;
@@ -440,7 +440,7 @@ class tool_kaltura_migration_controller {
 
     $replaced = 0;
     $channels = 0;
-    $progress = 0;
+    $processed = 0;
     foreach ($records as $record) {
       $table = $record->tblname;
       $id = $record->resid;
@@ -487,9 +487,9 @@ class tool_kaltura_migration_controller {
           }
         }
       }
-      $progress++;
-      if ($this->progress && $progress % 200 == 0) {
-        $this->progress->progress($progress);
+      $processed++;
+      if ($this->progress && $processed % 200 == 0) {
+        $this->progress->progress($processed);
       }
     }
 
@@ -508,8 +508,13 @@ class tool_kaltura_migration_controller {
   public function replaceAll($progress) {
     $this->progress = $progress;
     $progress->start_progress('Replacing all video urls', $this->countResults());
-    $this->replace(-2, true);
+
+    $errors = $this->replace(-2, true);
+
     $progress->end_progress();
+    if (is_countable($errors) && count($errors) > 0) {
+      $this->setTaskProgress('Encountered ' . count($errors) . ' errors. See log for details.');
+    }
   }
 
   /**
