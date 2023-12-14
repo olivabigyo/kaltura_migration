@@ -403,6 +403,9 @@ class tool_kaltura_migration_controller {
     if (preg_match('#https?://[a-zA-z0-9\._\-/]*?/([a-f0-9\-]{36})/([a-f0-9\-]{36})/.*#', $url, $matches)) {
       return [$matches[1], $matches[2]];
     }
+    if (preg_match('#https?://[a-zA-z0-9\._\-/]*?/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})#', $url, $matches)) {
+      return [$matches[1]];
+    }
     if (preg_match('#https?://[a-zA-z0-9\._\-/]*/([a-zA-Z0-9]{8,10})(\?|\#|$)#', $url, $matches)) {
       return [$matches[1]];
     }
