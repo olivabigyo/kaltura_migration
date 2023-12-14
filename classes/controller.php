@@ -454,20 +454,21 @@ class tool_kaltura_migration_controller {
         $url = $record->url;
         $referenceIds = $this->getReferenceIdsFromUrl($url);
         $entryId = $this->getEntryIdFromUrl($url);
+        $logid = "[{$record->id}, {$url}] ";
         if (!$referenceIds && !$entryId) {
-          $this->logger->error('Could not get refid from url ' . $url);
+          $this->logger->error($logid . 'Could not get refid from url ' . $url);
         } else if ((strpos($url, '/channels/') !== FALSE) || (strpos($url, '/channel/') !== FALSE)) {
           // Replace channel links.
           $category = $api->getCategoryByReferenceIds($referenceIds);
           if (!$category) {
-             $this->logger->error('Could not get Kaltura channel category with refid ' . implode(',', $referenceIds));
+             $this->logger->error($logid . 'Could not get Kaltura channel category with refid ' . implode(',', $referenceIds));
           } else if ($this->replaceChannel($table, $column, $id, $url, $category, $test)) {
             $record->replaced = true;
             $DB->update_record('tool_kaltura_migration_urls', $record);
             $channels++;
-            $this->logger->info('Channel replaced in table ' . $table . ' column ' . $column . ' record id ' . $id . ' with refid ' . implode(',', $referenceIds));
+            $this->logger->info($logid . 'Channel replaced in table ' . $table . ' column ' . $column . ' record id ' . $id . ' with refid ' . implode(',', $referenceIds));
           } else if (!$test) {
-            $this->logger->error('Could not replace html content in table ' . $table . ' column ' . $column . ' record id ' . $id);
+            $this->logger->error($logid . 'Could not replace html content in table ' . $table . ' column ' . $column . ' record id ' . $id);
           }
         } else {
           // Replace media embeds or links.
@@ -478,15 +479,15 @@ class tool_kaltura_migration_controller {
           }
 
           if (!$entry) {
-            $this->logger->error('Could not get Kaltura media with ' . ($referenceIds ? 'refid ' . implode(',', $referenceIds) :  'id ' . $entryId));
+            $this->logger->error($logid . 'Could not get Kaltura media with ' . ($referenceIds ? 'refid ' . implode(',', $referenceIds) :  'id ' . $entryId));
           } else if ($this->replaceVideo($table, $column, $id, $url, $entry, $filterablelinks, $test)) {
             $record->replaced = true;
             $DB->update_record('tool_kaltura_migration_urls', $record);
             $replaced++;
 
-            $this->logger->info('Video replaced in table ' . $table . ' column ' . $column . ' record id ' . $id . ' with ' . ($referenceIds ? 'refid ' . implode(',', $referenceIds) : 'entryid ' . $entryId));
+            $this->logger->info($logid . 'Video replaced in table ' . $table . ' column ' . $column . ' record id ' . $id . ' with ' . ($referenceIds ? 'refid ' . implode(',', $referenceIds) : 'entryid ' . $entryId));
           } else if (!$test) {
-            $this->logger->error('Could not replace html content in table ' . $table . ' column ' . $column . ' record id ' . $id);
+            $this->logger->error($logid . 'Could not replace html content in table ' . $table . ' column ' . $column . ' record id ' . $id);
           }
         }
       }
