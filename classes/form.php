@@ -134,12 +134,12 @@ class tool_kaltura_migration_form extends moodleform
 
     protected function getReplaceVideoCourses() {
         global $DB;
-        $course_ids = $DB->get_fieldset_sql('SELECT DISTINCT course FROM {tool_kaltura_migration_urls}');
+        $course_ids = $DB->get_fieldset_sql('SELECT DISTINCT course FROM {tool_kaltura_migration_urls} ORDER BY course ASC');
         return $this->getCourseOptions($course_ids);
     }
     protected function getReplaceModulesCourses() {
         global $DB;
-        $course_ids = $DB->get_fieldset_sql('SELECT DISTINCT course FROM {opencast}');
+        $course_ids = $DB->get_fieldset_sql('SELECT DISTINCT course FROM {opencast} ORDER BY course ASC');
         return $this->getCourseOptions($course_ids);
     }
     protected function getCourseOptions($course_ids) {
@@ -151,7 +151,7 @@ class tool_kaltura_migration_form extends moodleform
                 global $DB;
                 $course = $DB->get_record('course', array('id' => $id));
                 if (!empty($course)) {
-                    $courses[$id] = $course->fullname . '(' . $course->shortname . ')';
+                    $courses[$id] = $course->id . ' - ' . $course->fullname . '(' . $course->shortname . ')';
                 }
             }
         }
