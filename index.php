@@ -70,6 +70,10 @@ if ($optestreplacemodules = optional_param('optestreplacemodules', 0, PARAM_BOOL
 if ($opreplacemodules = optional_param('opreplacemodules', 0, PARAM_BOOL)) {
   $op = 'opreplacemodules';
 }
+if ($opreplaceallmodulestask = optional_param('opreplaceallmodulestask', 0, PARAM_BOOL)) {
+  $op = 'opreplaceallmodulestask';
+}
+
 if ($opdownloadurls = optional_param('opdownloadurls', 0, PARAM_BOOL)) {
   $op = 'opdownloadurls';
 }
@@ -160,6 +164,10 @@ if ($op) {
     $errors = $migration->replaceModules($course, $modulestocoursemedia, true);
   } else if ($opreplacemodules) {
     $errors = $migration->replaceModules($course, $modulestocoursemedia);
+  } else if ($opreplaceallmodulestask) {
+    if ($modulestocoursemedia) {
+      print_error('onlykalturaactivitytool', 'tool_kaltura_migration');
+    }
   }
   echo $OUTPUT->box_end();
 }
