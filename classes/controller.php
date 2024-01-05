@@ -782,6 +782,7 @@ EOD;
     $cms = $this->getAllSwitchCastModules($course);
     $api = new tool_kaltura_migration_api($this->logger);
     $replaced = 0;
+    $processed = 0;
     foreach ($cms as $cm) {
       $this->logger->entry();
       $instance = $this->getSwitchCastInstance($cm);
@@ -805,6 +806,10 @@ EOD;
             $this->logger->info("Successfully migrated '{$instance->name}'");
           }
         }
+      }
+      $processed++;
+      if ($this->progress && $processed % 50 == 0) {
+        $this->progress->progress($processed);
       }
     }
 
@@ -830,6 +835,18 @@ EOD;
     $this->logger->end();
     $errors = $this->logger->getErrors();
     return count($errors) == 0 ? true : $errors;
+  }
+
+  public function replaceAllModules($progress) {
+    $this->progress = $progress;
+    $progress->start_progress('Replacing all SwithCast modules', $this->countModules());
+
+    $errors = $this->replaceModules(-2, false, false);
+
+    $progress->end_progress();
+    if (is_countable($errors) && count($errors) > 0) {
+      $this->setTaskProgress('Encountered ' . count($errors) . ' errors. See log for details.');
+    }
   }
 
   /**

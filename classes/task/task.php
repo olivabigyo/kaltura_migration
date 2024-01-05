@@ -42,6 +42,8 @@ class task extends \core\task\adhoc_task
                 $migration->execute($progress, true);
             } elseif ($task == 'replaceall') {
                 $migration->replaceAll($progress);
+            } elseif ($task == 'replaceallmodules') {
+                $migration->replaceAllModules($progress);
             } else {
                 throw new \Exception('Unknown task: ' . $task);
             }

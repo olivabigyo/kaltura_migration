@@ -168,6 +168,8 @@ if ($op) {
     if ($modulestocoursemedia) {
       print_error('onlykalturaactivitytool', 'tool_kaltura_migration');
     }
+    $migration->scheduleTask('replaceallmodules');
+    redirect($URL);
   }
   echo $OUTPUT->box_end();
 }
