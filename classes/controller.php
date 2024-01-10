@@ -813,9 +813,22 @@ EOD;
     return $newid;
   }
 
-  /** @return string "Moodle>site>channels" */
+  /**
+   * Return the root category for this site media gallery. This is configured in
+   * the plugin settings and must be the same setting as in
+   * Kaltura Administration Site >
+   *  Configuration Management > Global > Categories > rootCategory
+   */
+  protected function getRootCategoryName() {
+    return get_config('tool_kaltura_migration', 'kaltura_root_category');
+  }
+
+  /**
+   * Return the category name "Moodle>site>channels".
+   * */
   protected function getParentCategoryFullName() {
-    return 'Moodle>site>channels';
+    $root = $this->getRootCategoryName();
+    return "$root>site>channels";
   }
 
   /**

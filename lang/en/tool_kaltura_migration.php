@@ -75,3 +75,6 @@ $string['addflavors'] = 'Real replace';
 $string['replaceasembeddings'] = 'Replace with generic javascript embedding code.';
 $string['replaceasfilterablelinks'] = 'Replace with link filterable by Kaltura Moodle plugin.';
 $string['kaf_uri'] = 'KAF URI';
+$string['kaltura_root_category'] = 'Kaltura Root Category';
+$string['kaltura_root_category_description'] = 'This must me the same as the rootCategory setting configured at Kaltura Configuration Management > Global > Categories. Used to replicate media galleries when copying or restoring a course.';
+

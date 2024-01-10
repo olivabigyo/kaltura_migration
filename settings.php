@@ -63,7 +63,15 @@ if ($hassiteconfig) {
     new lang_string('mediaspace_url_description', 'tool_kaltura_migration'),
     $mediaspace_url, PARAM_RAW_TRIMMED));
 
-    $ADMIN->add('tools', $settings);
+    $kaltura_root_category = get_config('ltisource_switch_config', 'kaltura_root_category');
+    if (empty($kaltura_root_category)) {
+        $kaltura_root_category = 'Moodle';
+    }
+    $settings->add(new admin_setting_configtext('tool_kaltura_migration/kaltura_root_category',
+    new lang_string('kaltura_root_category', 'tool_kaltura_migration'),
+    new lang_string('kaltura_root_category_description', 'tool_kaltura_migration'),
+    $kaltura_root_category, PARAM_RAW_TRIMMED));
 
+    $ADMIN->add('tools', $settings);
     $ADMIN->add('tools', new admin_externalpage('tool_kaltura_migration', get_string('pluginname', 'tool_kaltura_migration'), $CFG->wwwroot.'/'.$CFG->admin.'/tool/kaltura_migration/index.php', 'moodle/site:config'));
 }
