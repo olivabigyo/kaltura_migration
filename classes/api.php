@@ -23,12 +23,12 @@ class tool_kaltura_migration_api {
 
     $user = isset($USER) && isset($USER->email) ? $USER->email : '';
 
-    $config = new KalturaConfiguration();
+    $config = new \KalturaConfiguration();
     $config->serviceUrl = $url;
-    $config->format = KalturaClientBase::KALTURA_SERVICE_FORMAT_JSON;
+    $config->format = \KalturaClientBase::KALTURA_SERVICE_FORMAT_JSON;
 
-    $client = new KalturaClient($config);
-    $ks = $client->generateSession($adminsecret, $user, KalturaSessionType::ADMIN, $partner_id);
+    $client = new \KalturaClient($config);
+    $ks = $client->generateSession($adminsecret, $user, \KalturaSessionType::ADMIN, $partner_id);
     $client->setKs($ks);
 
     return $client;
@@ -63,7 +63,7 @@ class tool_kaltura_migration_api {
    * @param string $referenceId
    */
   public function getMediaByReferenceId($referenceId) {
-    $filter = new KalturaMediaEntryFilter();
+    $filter = new \KalturaMediaEntryFilter();
     $filter->referenceIdEqual = $referenceId;
     $pager = null;
     $result = $this->client->media->listAction($filter, $pager);
@@ -73,7 +73,7 @@ class tool_kaltura_migration_api {
    * @param string $entryId
    */
   public function getMediaByEntryId($entryId) {
-    $filter = new KalturaMediaEntryFilter();
+    $filter = new \KalturaMediaEntryFilter();
     $filter->idEqual = $entryId;
     $pager = null;
     $result = $this->client->media->listAction($filter, $pager);
@@ -97,7 +97,7 @@ class tool_kaltura_migration_api {
    * @return stdClass|bool category record or false if no or more than one category found.
    */
   public function getCategoryByReferenceId($referenceId) {
-    $filter = new KalturaCategoryFilter();
+    $filter = new \KalturaCategoryFilter();
     $filter->referenceIdEqual = $referenceId;
     $pager = null;
     $result = $this->client->category->listAction($filter, $pager);
@@ -110,7 +110,7 @@ class tool_kaltura_migration_api {
    * @return array category array.
    */
   public function getCategoriesByReferenceId($referenceId) {
-    $filter = new KalturaCategoryFilter();
+    $filter = new \KalturaCategoryFilter();
     $filter->referenceIdEqual = $referenceId;
     $pager = null;
     $result = $this->client->category->listAction($filter, $pager);
@@ -135,7 +135,7 @@ class tool_kaltura_migration_api {
    * Eg: "Moodle>site>channels>2-50"
    */
   public function getCategoryByFullName($fullName) {
-    $filter = new KalturaCategoryFilter();
+    $filter = new \KalturaCategoryFilter();
     $filter->fullNameEqual = $fullName;
     $pager = null;
     $result = $this->client->category->listAction($filter, $pager);
@@ -149,7 +149,7 @@ class tool_kaltura_migration_api {
    * @param string $name the new name.
    */
   public function moveCategory($category, $parent, $name, $retry = 0) {
-    $update = new KalturaCategory();
+    $update = new \KalturaCategory();
     $needupdate = false;
     if ($category->name != $name) {
       $update->name = $name;
@@ -162,7 +162,7 @@ class tool_kaltura_migration_api {
     if ($needupdate) {
       try {
         return $this->client->category->update($category->id, $update);
-      } catch (Exception $e) {
+      } catch (\Exception $e) {
         // It happens that when moving a category, Kaltura server does this operation
         // asynchronously (it looks like they have to rebuild some internal index) and
         // they block further operations on categories until the first operation is
@@ -191,7 +191,7 @@ class tool_kaltura_migration_api {
     'inheritanceType', 'defaultPermissionLevel', 'owner', 'referenceId',
     'contributionPolicy', 'privacyContext', 'partnerSortValue', 'partnerData',
     'defaultOrderBy', 'moderation', 'isAggregationCategory', 'aggregationCategories'];
-    $newcategory = new KalturaCategory();
+    $newcategory = new \KalturaCategory();
     foreach($fields as $field) {
       $newcategory->{$field} = $category->{$field};
     }
@@ -199,7 +199,7 @@ class tool_kaltura_migration_api {
     try {
       $newcategory = $this->client->category->add($newcategory);
       return $newcategory;
-    } catch (Exception $e) {
+    } catch (\Exception $e) {
       // Prevent pausing execution if cant create new category.
       $this->logger->error("Could not create category. " . $e->getMessage());
       return false;
@@ -227,7 +227,7 @@ class tool_kaltura_migration_api {
   }
 
   public function copyMedia($fromcategory, $tocategory) {
-    $filter = new KalturaCategoryEntryFilter();
+    $filter = new \KalturaCategoryEntryFilter();
     $filter->categoryIdEqual = $fromcategory->id;
 
     // Add all media from old category to new category.
@@ -243,18 +243,17 @@ class tool_kaltura_migration_api {
       if (in_array($id, $existingids)) {
         $this->logger->info("Entry id {$id} already in category, no need to add");
       } else {
-        $entry = new KalturaCategoryEntry();
+        $entry = new \KalturaCategoryEntry();
         $entry->categoryId = $tocategory->id;
         $entry->entryId = $id;
         try {
           $this->client->categoryEntry->add($entry);
           $this->logger->op(tool_kaltura_migration_logger::CODE_OP_ADD_MEDIA_TO_CATEGORY, $id, $tocategory->id);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
           // Don't pause execution.
           $this->logger->error("Error adding entry {$id} to category {$tocategory->id}. Should be fixed manually!" . $e->getMessage());
         }
       }
-
     }
   }
 
