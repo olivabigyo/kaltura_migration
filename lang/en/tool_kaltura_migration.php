@@ -82,3 +82,5 @@ $string['limit'] = 'Limit';
 $string['offset'] = 'Offset';
 $string['onlyfilterablelinks'] = 'Background task is currently available only for replacing with filterable links';
 $string['onlykalturaactivitytool'] = 'Background task is currently available only for replacing with Kaltura Activity external tool';
+$string['kaltura_root_category'] = 'Kaltura Root Category';
+$string['kaltura_root_category_description'] = 'This must me the same as the rootCategory setting configured at Kaltura Configuration Management > Global > Categories. Used to replicate media galleries when copying or restoring a course.';
