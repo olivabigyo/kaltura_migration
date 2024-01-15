@@ -149,48 +149,54 @@ class tool_kaltura_migration_api {
    * @param string $name the new name.
    */
   public function moveCategory($category, $parent, $name, $retry = 0) {
-    $update = new \KalturaCategory();
-    $needupdate = false;
-    if ($category->name != $name) {
+    if ($category->parentId == $parent->id && $category->name == $name) {
+      // Nothing to do.
+      return $category;
+    }
+    if ($category->parentId == $parent->id) {
+      // Just rename.
+      $update = new \KalturaCategory();
       $update->name = $name;
-      $needupdate = true;
-    }
-    if ($category->parentId != $parent->id) {
-      $update->parentId = $parent->id;
-      $needupdate = true;
-    }
-    if ($needupdate) {
       try {
         return $this->client->category->update($category->id, $update);
       } catch (\Exception $e) {
-        // It happens that when moving a category, Kaltura server does this operation
-        // asynchronously (it looks like they have to rebuild some internal index) and
-        // they block further operations on categories until the first operation is
-        // completed. That's why we spend up to 7 seconds to wait for that.
-        if ($e->getCode() == 'CATEGORIES_LOCKED') {
-          if ($retry < 3) {
-            sleep(2^$retry);
-            $retry++;
-            return $this->moveCategory($category, $parent, $name, $retry);
-          } else {
-            $this->logger->error("Could not move category {$category->id} from {$category->parentId} to {$parent->id} after 3 tries. Please try again or do the move my other means");
-            return false;
-          }
-        }
         // Prevent pausing migration.
         $this->logger->error($e->getMessage());
         return false;
       }
+    } else {
+      // Move category.
+      // We've found buggy behavior from kaltura server when moving categories.
+      // That's why we create, copy content and delete the old category instead of
+      // just moving it.
+      $newcategory = $this->copyCategory($category, $parent, $name);
+      if ($newcategory === false) {
+        return false;
+      }
+      $this->deleteCategory($category);
+
+      return $newcategory;
     }
-    return $category;
+  }
+
+  public function deleteCategory($category) {
+    try {
+      // Don't move entries to parent ctegory on category deletion.
+      $this->client->category->delete($category->id, false);
+      return true;
+    } catch (\Exception $e) {
+      // Prevent pausing migration.
+      $this->logger->error("Error deleting category {$category->id}. " . $e->getMessage());
+      return false;
+    }
+
   }
 
   public function createCategory($category) {
-    // Build new category object
-    $fields = ['name','parentId', 'description', 'tags', 'privacy',
-    'inheritanceType', 'defaultPermissionLevel', 'owner', 'referenceId',
-    'contributionPolicy', 'privacyContext', 'partnerSortValue', 'partnerData',
-    'defaultOrderBy', 'moderation', 'isAggregationCategory', 'aggregationCategories'];
+    // Build new category object. We're just using some basic fields but not
+    // privacy labels, access control, ownership, etc since otherwise the
+    // operation may fail depending on the parent category options.
+    $fields = ['name','parentId', 'description', 'tags', 'referenceId'];
     $newcategory = new \KalturaCategory();
     foreach($fields as $field) {
       $newcategory->{$field} = $category->{$field};
@@ -214,9 +220,13 @@ class tool_kaltura_migration_api {
    * @return object|bool the new category or false.
    */
   public function copyCategory($category, $parent, $newname) {
-    $model = clone($category);
-    $model->name = $newname;
-    $model->parentId = $parent->id;
+    $model = (object)[
+      'name' => $newname,
+      'parentId' => $parent->id,
+      'description' => $category->description,
+      'tags' => $category->tags,
+      'referenceId' => $category->referenceId,
+    ];
 
     if (($newcategory = $this->createCategory($model)) === false) {
       return false;

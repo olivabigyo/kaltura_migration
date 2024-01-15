@@ -42,6 +42,7 @@ class tool_kaltura_migration_logger {
   public const CODE_OP_MOVE_CATEGORY = 'MOVE_CATEGORY';
   public const CODE_OP_ADD_MEDIA_TO_CATEGORY = 'ADD_MEDIA_TO_CATEGORY';
   public const CODE_OP_COPY_CATEGORY = 'COPY_CATEGORY';
+  public const CODE_OP_DELETE_CATEGORY = 'DELETE_CATEGORY';
 
 
   private $currentEntry = 0;
@@ -149,6 +150,10 @@ class tool_kaltura_migration_logger {
       $msg = "Media $id1 {$infix}added to category $id2";
     } else if ($code == self::CODE_OP_COPY_CATEGORY) {
       $msg = "Category $id1 {$infix}copied to name $id2 with all its entries";
+    } else if ($code == self::CODE_OP_DELETE_CATEGORY) {
+      $msg = "Category $id1 {$infix}deleted";
+    } else {
+      $msg = "Unknown operation code $code";
     }
     $this->log(self::LEVEL_OPERATION, $msg, $code, $id1, $id2);
   }
