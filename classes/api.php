@@ -1,6 +1,7 @@
 <?php
 global $CFG;
-require_once($CFG->dirroot . '/local/kaltura/API/KalturaClient.php');
+require_once __DIR__ . '/kaltura_client.php';
+
 
 class tool_kaltura_migration_api {
   protected $client;
@@ -27,7 +28,7 @@ class tool_kaltura_migration_api {
     $config->serviceUrl = $url;
     $config->format = \KalturaClientBase::KALTURA_SERVICE_FORMAT_JSON;
 
-    $client = new \KalturaClient($config);
+    $client = new \RetryKalturaClient($config);
     $ks = $client->generateSession($adminsecret, $user, \KalturaSessionType::ADMIN, $partner_id);
     $client->setKs($ks);
 
