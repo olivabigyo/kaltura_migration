@@ -1067,11 +1067,12 @@ EOD;
     if ($category) {
       // (b) We have a category for our module, but we need to move/rename it.
       if ($testing) {
-        if ($category->parentId !== $parent->id) {
-          $this->logger->op(tool_kaltura_migration_logger::CODE_OP_MOVE_CATEGORY, $category->id, $parent->fullName);
-        }
-        if ($category->name !== $category_name) {
+        if ($category->parentId == $parent->id && $category->name !== $category_name) {
           $this->logger->op(tool_kaltura_migration_logger::CODE_OP_RENAME_CATEGORY, $category->id, $category_name);
+        }
+        if ($category->parentId !== $parent->id) {
+          $this->logger->op(tool_kaltura_migration_logger::CODE_OP_COPY_CATEGORY, $category->id, "$parent->fullName>$category_name");
+          $this->logger->op(tool_kaltura_migration_logger::CODE_OP_DELETE_CATEGORY, $category->id);
         }
         // simulate move in testing execution.
         $category->name = $category_name;
@@ -1080,6 +1081,7 @@ EOD;
         $this->testing_updates[$category->id] = $category;
       } else {
         $old_name = $category->fullName;
+        $oldcategory = $category;
         $category = $api->moveCategory($category, $parent, $category_name);
         if ($category === false) {
           $new_name = $parent->fullName . '>' . $category_name;
@@ -1089,7 +1091,8 @@ EOD;
           if (strpos($old_name, $parent->fullName) !== false) {
             $this->logger->op(tool_kaltura_migration_logger::CODE_OP_RENAME_CATEGORY, $category->id, $category_name);
           } else {
-            $this->logger->op(tool_kaltura_migration_logger::CODE_OP_MOVE_CATEGORY, $category->id, $category->fullName);
+            $this->logger->op(tool_kaltura_migration_logger::CODE_OP_CREATE_CATEGORY, $category->id, $category->fullName);
+            $this->logger->op(tool_kaltura_migration_logger::CODE_OP_DELETE_CATEGORY, $oldcategory->id);
           }
         }
       }
