@@ -120,7 +120,7 @@ class tool_kaltura_migration_form extends moodleform
                 // disable replace button on changing radio.
                 $mform->disabledIf('opreplacemodules', 'modulestocoursemedia', 'neq', $modulestocoursemedia);
             }
-            $buttonarray[] = $mform->createElement('submit', 'opreplaceallmodulestask', get_string('replaceallmodulestask', 'tool_kaltura_migration'));
+            // $buttonarray[] = $mform->createElement('submit', 'opreplaceallmodulestask', get_string('replaceallmodulestask', 'tool_kaltura_migration'));
             $mform->addGroup($buttonarray, 'buttonar2', '', ' ', false);
         } else {
             $mform->addElement('static', 'message', '', get_string('therearenomodules', 'tool_kaltura_migration'));
