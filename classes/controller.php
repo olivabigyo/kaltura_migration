@@ -907,19 +907,7 @@ EOD;
       'parentId' => $parent->id,
       'description' => null,
       'tags' => null,
-      'privacy' => 1,
-      'inheritanceType' => 2,
-      'defaultPermissionLevel' => 3,
-      'owner' => '',
-      'referenceId' => '',
-      'contributionPolicy' => 1,
-      'privacyContext' => '',
-      'partnerSortValue' => 0,
-      'partnerData' => null,
-      'defaultOrderBy' => null,
-      'moderation' => true,
-      'isAggregationCategory' => false,
-      'aggregationCategories' => ''
+      'referenceId' => ''
     ];
     if (!$testing) {
       $category = $api->createCategory($category);
@@ -954,31 +942,19 @@ EOD;
   /**
    * From the given array of categories, pick one such that the name of the
    * category is NOT the string "course-cmid" for any LTI module.
+   *
+   * Since several Moodle instances can point to the same Kaltura Instance,
+   * this script assumes the category is in use if it has the form
+   * "*>site>channels>xxx-yyy"
    */
   protected function getFreeCategory($categories, $testing) {
-    global $DB;
-        // Search for a free category.
-    $category = false;
-    $ltimodule = $DB->get_field('modules', 'id', ['name'=>'lti']);
+    // Search for a free category.
     foreach ($categories as $candidate) {
-      if (preg_match('/(\d+)\-(\d+)/', $candidate->name, $matches)) {
-        $courseid = intval($matches[1]);
-        $cmid = intval($matches[2]);
-        if (!$DB->count_records('course_modules', ['id' => intval($cmid), 'course' => intval($courseid), 'module' => $ltimodule])) {
-          if ($testing) {
-            // Take in count not created modules when testing!
-            if (in_array($candidate->name, $this->testing_created_modules)) {
-              continue;
-            }
-          }
-          // There not exists any module with the id based on the category name.
-          $category = $candidate;
-        }
-      } else {
-        $category = $candidate;
+      if (!preg_match('/^.+>site>channels>\d+\-\d+$/', $candidate->fullName)) {
+        return $candidate;
       }
     }
-    return $category;
+    return false;
   }
 
   /**
@@ -1008,11 +984,6 @@ EOD;
     $mcategories = array_filter($categories, function($cat) use ($parent) {
       return $cat->parentId == $parent->id;
     });
-    // Categories with other (wrong) parents
-    $ocategories = array_filter($categories, function($cat) use ($parent) {
-      return $cat->parentId != $parent->id;
-    });
-
 
     $newid = $this->guessNextModuleId($testing);
     $category_name = $cm->course . '-' . $newid;
@@ -1027,9 +998,9 @@ EOD;
     }
 
     // At this point there is no category with the right reference id and name,
-    // so we'll need to rename an existing category or create a new category with
-    // the proper name. However that may clash with an existing category (with
-    // different refid). We check this possibility here:
+    // so we'll need to  create a new category with the proper name. However
+    // that may clash with an existing category (with different refid). We check
+    // this possibility here:
     $existing = $api->getCategoryByParentAndName($parent, $category_name);
     if ($testing){
       if ($existing && isset($this->testing_updates[$existing->id])) {
@@ -1043,7 +1014,6 @@ EOD;
             $existing = $candidate;
           }
         }
-
       }
     }
     if ($existing) {
@@ -1054,15 +1024,8 @@ EOD;
       return false;
     }
 
-    // Check if there is an available category with the right parent.
-    $category = $this->getFreeCategory($mcategories, $testing);
-
-    // Otherwise, check if there is a category with the wrong parent. Any category
-    // with wrong parent is automatically free, since LTI modules only search in
-    // cartegories within the right parent.
-    if ($category === false && (count($ocategories) > 0)) {
-      $category = array_shift($ocategories);
-    }
+    // Check if there is an available category not used by any LTI module.
+    $category = $this->getFreeCategory($categories, $testing);
 
     if ($category) {
       // (b) We have a category for our module, but we need to move/rename it.
