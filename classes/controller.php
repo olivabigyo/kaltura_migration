@@ -854,7 +854,21 @@ EOD;
    */
   protected function guessNextModuleId($testing = false) {
     global $DB;
-    $newid = $DB->get_field_sql("SELECT MAX(id) FROM {course_modules}") + 1;
+    // We try different strategies to guess the next module id.
+
+    // For Postgres, we can get the last_value of tablename_fieldname_seq sequence.
+    try {
+      $lastid = $DB->get_field_sql('SELECT last_value FROM {course_modules}_id_seq');
+    } catch (Exception $e) {
+      $lastid = false;
+    }
+    // In MySQL, we could use IDENT_CURRENT but there won't be use cases.
+    // In other cases, just use the maximum.
+    if ($lastid === false) {
+      $lastid = $DB->get_field_sql('SELECT MAX(id) FROM {course_modules}');
+      $this->logger->warning('Could not reliably guess the last module id. Guessed ' . ($lastid + 1) . '.');
+    }
+    $newid = $lastid + 1;
     if ($testing) {
       $newid += count($this->testing_created_modules);
     }
