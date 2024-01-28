@@ -720,7 +720,7 @@ EOD;
 
     $category = $this->getCourseCategory($api, $course, $testing);
     if ($category === false) {
-      $this->logger->error("Error creating course category.");
+      $this->logger->error("Error creating course category");
       return false;
     }
     $replaced = 0;
@@ -729,11 +729,11 @@ EOD;
       $instance = $this->getSwitchCastInstance($cm);
       $cmcategories = $api->getCategoriesByReferenceId($instance->ext_id);
       if (count($cmcategories) == 0) {
-        $this->logger->errorCM($cm, "Kaltura category with reference id {$instance->ext_id} not found.");
+        $this->logger->errorCM($cm, "Kaltura category with reference id {$instance->ext_id} not found");
       } else {
         $cmcategory = $cmcategories[0];
         if (count($cmcategories) > 1) {
-          $this->logger->warning("More than one category found with reference id {$instance->ext_id}. Taking the one with id {$cmcategory->id}.");
+          $this->logger->warning("More than one category found with reference id {$instance->ext_id}. Taking the one with id {$cmcategory->id}");
         }
         if ($testing) {
           $this->logger->info("Module '{$instance->name}' ready to migrate!");
@@ -742,7 +742,7 @@ EOD;
           $api->copyMedia($cmcategory, $category);
           // Remove the switchcast cm.
           course_delete_module($cm->id);
-          $this->logger->info("Media successfully migrated from module name '{$instance->name}' to Course Media Gallery.");
+          $this->logger->info("Media successfully migrated from module name '{$instance->name}' to Course Media Gallery");
           $replaced++;
         }
       }
@@ -790,6 +790,7 @@ EOD;
       if (!$modinfo) {
           $this->logger->errorCM($cm, "Create first the Video Gallery LTI type. Can't migrate!");
       } else {
+        $this->logger->info("Migrating SwitchCast module '{$instance->name}' (id: {$cm->id})");
         $category = $this->getModuleCategory($api, $cm, $instance, $testing);
         if ($category === false) {
           // Category not found. Report error!
@@ -862,7 +863,7 @@ EOD;
     } catch (Exception $e) {
       $lastid = false;
     }
-    // In MySQL, we could use IDENT_CURRENT but there won't be use cases.
+    // In MySQL, we could use IDENT_CURRENT but there are no MySQL clients so far.
     // In other cases, just use the maximum.
     if ($lastid === false) {
       $lastid = $DB->get_field_sql('SELECT MAX(id) FROM {course_modules}');
@@ -913,7 +914,7 @@ EOD;
     $parent = $this->getParentCategory($api);
     if ($parent === false) {
       $fullname = $this->getParentCategoryFullName();
-      $this->logger->error("Could not find parent category {$fullname}.");
+      $this->logger->error("Could not find parent category {$fullname}");
       return false;
     }
     $category = (object)[
@@ -944,7 +945,7 @@ EOD;
       if ($testing) {
         $this->logger->warning("Kaltura category not found for course {$courseid}. The
         migration process will create a new one. You can also manually visit the
-        course media gallery in order to create the categories in Kaltura.");
+        course media gallery in order to create the categories in Kaltura");
       }
       // No Media gallery exists for this course. We'll create a new one.
       // Note that this function still has the testing parameter.
@@ -979,12 +980,17 @@ EOD;
     global $DB;
 
     $categories = $api->getCategoriesByReferenceId($instance->ext_id);
-    if (count($categories) == 0) {
+    $num_categories = count($categories);
+    if ($num_categories == 0) {
       $this->logger->error("There is no kaltura category with reference id {$instance->ext_id}");
       return false;
+    } else if ($num_categories == 1) {
+      $this->logger->info("Found kaltura category with reference id {$instance->ext_id}");
+    } else {
+      $this->logger->warning("Found $num_categories categories with reference id {$instance->ext_id}");
     }
+
     if ($testing) {
-      $this->logger->info("Found kaltura category with reference id {$instance->ext_id} for Switchcast module id {$cm->id} name '{$instance->name}'");
       // Simulate previous updates.
       foreach ($categories as $index => $category) {
         if (isset($this->testing_updates[$category->id])) {
@@ -1007,6 +1013,7 @@ EOD;
     foreach ($mcategories as $category) {
       if ($category->name == $category_name) {
         // (a) we found the matching category for this module!
+        $this->logger->info("Found category already with name {$category->fullName} (id: {$category->id}, {$category->entriesCount} entries), no need to rename");
         return $category;
       }
     }
@@ -1034,7 +1041,7 @@ EOD;
       $this->logger->error("There already exists another category with name {$category_name}
       but with different reference id {$existing->referenceId} so it's not possible to
       rename the related category found. That requires manual fix: either delete,
-      rename or change the reference Id of this category to {$instance->ext_id}.");
+      rename or change the reference Id of this category to {$instance->ext_id}");
       return false;
     }
 
@@ -1043,11 +1050,11 @@ EOD;
 
     if ($category) {
       // (b) We have a category for our module, but we need to move/rename it.
+      $this->logger->info("Using target category {$category->fullName} (id {$category->id}, {$category->entriesCount} entries)");
       if ($testing) {
-        if ($category->parentId == $parent->id && $category->name !== $category_name) {
+        if ($category->parentId == $parent->id) {
           $this->logger->op(tool_kaltura_migration_logger::CODE_OP_RENAME_CATEGORY, $category->id, $category_name);
-        }
-        if ($category->parentId !== $parent->id) {
+        } else {
           $this->logger->op(tool_kaltura_migration_logger::CODE_OP_COPY_CATEGORY, $category->id, "$parent->fullName>$category_name");
           $this->logger->op(tool_kaltura_migration_logger::CODE_OP_DELETE_CATEGORY, $category->id);
         }
@@ -1062,24 +1069,24 @@ EOD;
         $category = $api->moveCategory($category, $parent, $category_name);
         if ($category === false) {
           $new_name = $parent->fullName . '>' . $category_name;
-          $this->logger->errorCM($cm, "Error moving category id {$category->id} refid {$instance->ext_id} from '{$old_name}' to '{$new_name}'.");
+          $this->logger->errorCM($cm, "Error moving category id {$category->id} refid {$instance->ext_id} from '{$old_name}' to '{$new_name}'");
           return false;
+        }
+        if ($oldcategory->parentId == $parent->id) {
+          $this->logger->op(tool_kaltura_migration_logger::CODE_OP_RENAME_CATEGORY, $category->id, $category_name);
         } else {
-          if (strpos($old_name, $parent->fullName) !== false) {
-            $this->logger->op(tool_kaltura_migration_logger::CODE_OP_RENAME_CATEGORY, $category->id, $category_name);
-          } else {
-            $this->logger->op(tool_kaltura_migration_logger::CODE_OP_CREATE_CATEGORY, $category->id, $category->fullName);
-            $this->logger->op(tool_kaltura_migration_logger::CODE_OP_DELETE_CATEGORY, $oldcategory->id);
-          }
+          // Note the create vs move i testing, since the real operation logs each entry addition.
+          $this->logger->op(tool_kaltura_migration_logger::CODE_OP_CREATE_CATEGORY, $category->id, $category->fullName);
+          $this->logger->op(tool_kaltura_migration_logger::CODE_OP_DELETE_CATEGORY, $oldcategory->id);
         }
       }
     } else {
       // (c) Didn't found any free category for our module. Let's create a new one.
       $model = array_shift($categories);
+      $this->logger->info("Using target category {$model->fullName} (id {$model->id}, {$model->entriesCount} entries)");
+      $this->logger->warning("This category will be kept because another LTI video gallery is using it");
       if ($testing) {
-        $this->logger->warning("There is another SwitchCast module pointing to the same category. "
-        . "A new category will need to be created and all media from the existing category added also to the new category.");
-        $this->logger->op(tool_kaltura_migration_logger::CODE_OP_COPY_CATEGORY, $model->id, $category_name);
+        $this->logger->op(tool_kaltura_migration_logger::CODE_OP_COPY_CATEGORY, $model->id, "$parent->fullName>$category_name");
         $category = $model;
       } else {
         $category = $api->copyCategory($model, $parent, $category_name);
@@ -1282,13 +1289,13 @@ EOD;
     $this->logger = new tool_kaltura_migration_logger();
     $this->logger->start($test);
     $suffix = $test ? ' in TEST mode' : '';
-    $this->logger->info("Starting process ${suffix}.");
+    $this->logger->info("Starting process ${suffix}");
 
     $this->foreachDBColumn(function($table, $column) use ($test) {
       $this->addFlavorsCallback($table, $column, $test);
     });
 
-    $this->logger->info("Process end ${suffix}.");
+    $this->logger->info("Process end ${suffix}");
   }
 
   protected function addFlavorsCallback($table, $column, $test) {
@@ -1322,7 +1329,7 @@ EOD;
         $url = $matches[1];
         $mediaid = $matches[2];
         $prefix = $test ? '[TEST] ' : '';
-        $this->logger->info("${prefix}Added flavors to media $mediaid in $table $id ($colname).");
+        $this->logger->info("${prefix}Added flavors to media $mediaid in $table $id ($colname)");
         // Add the flavor parameter.
         $url = "$url/flavorParamIds/6,7/video.mp4";
         // Add the last character matched by pattern but not part of url.
