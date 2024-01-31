@@ -240,14 +240,17 @@ class tool_kaltura_migration_api {
   public function copyMedia($fromcategory, $tocategory) {
     $filter = new \KalturaCategoryEntryFilter();
     $filter->categoryIdEqual = $fromcategory->id;
+    // Set a high page size so we don't need to iterate.
+    $pager = new \KalturaFilterPager();
+    $pager->pageSize = 500;
 
     // Add all media from old category to new category.
-    $result = $this->client->categoryEntry->listAction($filter, null);
+    $result = $this->client->categoryEntry->listAction($filter, $pager);
     $entryids = array_map(function($object) { return $object->entryId; }, $result->objects);
     // Check which entries are already in target category.
     $filter->categoryIdEqual = $tocategory->id;
     $filter->entryIdIn = implode(',', $entryids);
-    $existing = $this->client->categoryEntry->listAction($filter, null);
+    $existing = $this->client->categoryEntry->listAction($filter, $pager);
     $existingids = array_map(function($object) { return $object->entryId; }, $existing->objects);
 
     foreach ($entryids as $id) {
