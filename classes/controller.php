@@ -301,6 +301,9 @@ class tool_kaltura_migration_controller {
     $this->foreachDBColumn(function($table, $column) {
       $this->searchCallback($table, $column);
     });
+
+    // Search for video URLs in IVS modules.
+    $this->searchIVS();
   }
 
   protected function searchCallback($table, $column) {
@@ -324,9 +327,33 @@ class tool_kaltura_migration_controller {
         );
       }
     }
+
     // Save results into DB.
     $DB->insert_records('tool_kaltura_migration_urls', $records);
   }
+
+  protected function searchIVS() {
+    global $DB;
+    $dbman = $DB->get_manager();
+    if ($dbman->table_exists('ivs')) {
+      $records = [];
+      $ivs_mods = $DB->get_records('ivs');
+      foreach ($ivs_mods as $ivs) {
+        if (strpos($ivs->videourl, 'OpenCastFileVideoHost') !== false) {
+          $records[] = array(
+            'tblname' => 'ivs',
+            'colname' => 'videourl',
+            'resid' => $ivs->id,
+            'url' => $ivs->videourl,
+            'replaced' => false,
+            'course' => $ivs->course
+          );
+        }
+      }
+      $DB->insert_records('tool_kaltura_migration_urls', $records);
+    }
+  }
+
 
   /**
    * Delete all saved records from a previous execute() invocation.
@@ -407,6 +434,9 @@ class tool_kaltura_migration_controller {
       return [$matches[1]];
     }
     if (preg_match('#https?://[a-zA-z0-9\._\-/]*/([a-zA-Z0-9]{8,10})(\?|\#|$)#', $url, $matches)) {
+      return [$matches[1]];
+    }
+    if (preg_match('#OpenCastFileVideoHost://([a-fA-Z0-9\-]+)#', $url, $matches)) {
       return [$matches[1]];
     }
 
@@ -577,8 +607,6 @@ class tool_kaltura_migration_controller {
       if (($pos = strrpos($url, '?entry_id=')) !== FALSE) {
         $url = substr($url, 0, $pos);
       }
-      $script_reg = "#<script src=\"".preg_quote($url, "#")."\"></script>\s*<div[^>]*width:\s*(\d+)px;\s*height:\s*(\d+)px[^>]*></div>\s*<script>[^<]*</script>#";
-      $anchor_reg = "#<a href=\"" . preg_quote($url, "#") . "\">tinymce-kalturamedia-embed\|\|[^|]*\|\|(\d+)\|\|(\d+)</a>#";
 
       $regexs = [$iframe_reg, $iframe2_reg, $iframe3_reg, $video_reg, $video2_reg];
       // Only replace the new embedding forms that are not the way we want the embedding to be done.
@@ -604,6 +632,11 @@ class tool_kaltura_migration_controller {
         }
         return $this->getKalturaEmbedCode($entry, $width, $height, $filterablelinks);
       }, $content);
+    }
+
+    // Replace IVS module video urls.
+    if (strpos($url, 'OpenCastFileVideoHost://') !== FALSE) {
+      $content = 'KalturaFileVideoHost://' . $entry->id;
     }
 
     // Replace video links and other references (not embeddings)
@@ -1344,7 +1377,6 @@ EOD;
         $DB->set_field($table, $column->name, $newcontent, ['id' => $id]);
       }
     }
-
   }
 
   // Adhoc task related functions.
